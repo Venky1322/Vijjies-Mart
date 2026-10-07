@@ -1,0 +1,164 @@
+/* 🌿 ROOT COLORS */
+:root {
+  --accent: #16a34a;
+  --accent-light: #4ade80;
+  --accent-bg: #eaf6ec;
+  --border: #e5e7eb;
+  --text: #1f2937;
+  --bg-dark: #f7f8f5;
+  --card-bg: #ffffff;
+  --shadow: 0 8px 24px rgba(31, 41, 55, 0.08);
+}
+
+body {
+  background: #f7f8f5;
+  color: var(--text);
+  font-family: 'Poppins', sans-serif;
+  min-height: 100vh;
+}
+
+/* 🎯 BUTTON STYLE */
+.counter {
+  font-size: 16px;
+  padding: 10px 18px;
+  border-radius: 12px;
+  color: white;
+  background: linear-gradient(135deg, var(--accent), var(--accent-light));
+  border: none;
+  transition: all 0.3s ease;
+  box-shadow: var(--shadow);
+}
+
+.counter:hover {
+  transform: translateY(-3px) scale(1.05);
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.5);
+}
+
+/* 🌟 HERO SECTION */
+.hero {
+  text-align: center;
+  padding: 60px 20px;
+}
+
+/* 🖼 HERO IMAGE */
+.hero::before {
+  content: "";
+  display: block;
+  width: 220px;
+  height: 220px;
+  margin: 0 auto 20px;
+  background-image: url("https://images.unsplash.com/photo-1542838132-92c53300491e");
+  background-size: cover;
+  background-position: center;
+  border-radius: 50%;
+  box-shadow: 0 0 30px rgba(16, 185, 129, 0.4);
+  animation: float 4s ease-in-out infinite;
+}
+
+/* 📦 CENTER SECTION */
+#center {
+  display: flex;
+  flex-direction: column;
+  gap: 25px;
+  justify-content: center;
+  align-items: center;
+  padding: 40px;
+}
+
+/* 🧊 GLASS CARD */
+#next-steps {
+  display: flex;
+  margin-top: 30px;
+}
+
+#next-steps > div {
+  flex: 1;
+  padding: 30px;
+  background: var(--card-bg);
+  backdrop-filter: blur(15px);
+  border-radius: 20px;
+  margin: 10px;
+  transition: all 0.3s ease;
+  box-shadow: var(--shadow);
+}
+
+#next-steps > div:hover {
+  transform: translateY(-10px) scale(1.03);
+  border: 1px solid var(--accent);
+}
+
+/* 🎨 ICON */
+.icon {
+  margin-bottom: 16px;
+  width: 30px;
+  height: 30px;
+  color: var(--accent-light);
+}
+
+/* 🔗 LINKS */
+#next-steps ul {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+#next-steps ul a {
+  color: white;
+  font-size: 14px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 8px 14px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  transition: all 0.3s ease;
+}
+
+#next-steps ul a:hover {
+  background: linear-gradient(135deg, var(--accent), var(--accent-light));
+  color: black;
+  box-shadow: 0 0 15px rgba(16, 185, 129, 0.6);
+}
+
+/* ✨ DECORATIVE LINE */
+#spacer {
+  height: 70px;
+}
+
+/* 🔺 TICKS */
+.ticks::before,
+.ticks::after {
+  content: '';
+  position: absolute;
+  top: -4px;
+  border: 6px solid transparent;
+}
+
+.ticks::before {
+  left: 0;
+  border-left-color: var(--accent);
+}
+
+.ticks::after {
+  right: 0;
+  border-right-color: var(--accent);
+}
+
+/* 🎬 ANIMATIONS */
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-15px); }
+}
+
+/* 📱 RESPONSIVE */
+@media (max-width: 1024px) {
+  #next-steps {
+    flex-direction: column;
+  }
+
+  #center {
+    padding: 20px;
+  }
+}
