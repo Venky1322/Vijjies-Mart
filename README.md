@@ -186,3 +186,11 @@ The platform can work with:
                     │ DELIVERY PARTNER    │
                     │     DASHBOARD       │
                     └─────────────────────┘
+
+## 📄 License
+
+© 2026 VIJJIES-MART. All Rights Reserved.
+
+VIJJIES-MART is a startup project developed for commercial use.
+
+The source code, design, branding, business logic, and associated assets are proprietary and may not be copied, modified, distributed, or used for commercial purposes without prior written permission from the VIJJIES-MART team.
