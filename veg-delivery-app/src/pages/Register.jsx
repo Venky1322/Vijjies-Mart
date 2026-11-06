@@ -389,14 +389,15 @@ const Register = () => {
                 setLocationError("");
               }}
             >
-              <label htmlFor="register-address" className="sr-only">Delivery address</label>
-              <input
-                id="register-address"
-                type="text"
-                placeholder="Search your Address"
-                value={form.address}
-                autoComplete="street-address"
-                className="
+              <div>
+                <label htmlFor="register-address" className="sr-only">Delivery address</label>
+                <input
+                  id="register-address"
+                  type="text"
+                  placeholder="Search your Address"
+                  value={form.address}
+                  autoComplete="street-address"
+                  className="
         w-full
         bg-white
         border
@@ -411,15 +412,16 @@ const Register = () => {
         focus:shadow-[0_0_0_3px_rgba(34,136,56,0.14)]
         transition-all
       "
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    address: e.target.value,
-                    latitude: undefined,
-                    longitude: undefined,
-                  })
-                }
-              />
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      address: e.target.value,
+                      latitude: undefined,
+                      longitude: undefined,
+                    })
+                  }
+                />
+              </div>
             </Autocomplete>
 
             <button
