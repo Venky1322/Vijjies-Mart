@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import { ShoppingCart, Check, AlertCircle } from "lucide-react";
 import { useContext, useMemo, useState } from "react";
 import { CartContext } from "../context/CartContext";
+import { priceForWeight } from "../utils/money";
 
 const VegetableCard = ({ veg }) => {
   const { cart, addToCart } = useContext(CartContext);
@@ -41,11 +42,14 @@ const VegetableCard = ({ veg }) => {
   }, [veg]);
 
   const currentCartItem = cart?.find(
-    (item) => String(item.productId ?? item.id) === String(veg?._id)
+    (item) =>
+      String(item.productId ?? item.id) === String(veg?._id) &&
+      !item.voiceWeightBased &&
+      Number(item.weight ?? 1) === weight
   );
 
   const price = useMemo(
-    () => (Number(veg?.pricePerKg) || 0) * weight,
+    () => priceForWeight(veg?.pricePerKg, weight),
     [veg?.pricePerKg, weight]
   );
 
@@ -78,7 +82,7 @@ const VegetableCard = ({ veg }) => {
     <motion.div
       whileHover={{ y: -6, scale: 1.02 }}
       transition={{ duration: 0.25 }}
-      className="w-full max-w-[270px] rounded-2xl overflow-hidden 
+      className="vm-product-card w-full max-w-[270px] rounded-2xl overflow-hidden
       bg-white/90 backdrop-blur-md text-gray-800 
       shadow-md hover:shadow-xl hover:shadow-emerald-950/20 
       border border-emerald-100 flex flex-col justify-between transition-all"
@@ -104,8 +108,8 @@ const VegetableCard = ({ veg }) => {
               <AlertCircle size={12} /> Out of Stock
             </span>
           ) : (
-            <span className="bg-emerald-600/95 text-white px-2.5 py-0.5 rounded-full text-xs font-semibold shadow-md">
-              🌱 Fresh
+            <span className="bg-emerald-700 text-white px-2.5 py-0.5 rounded-full text-xs font-semibold shadow-md">
+              Available
             </span>
           )}
         </div>
@@ -113,9 +117,7 @@ const VegetableCard = ({ veg }) => {
         {/* Cart Count Pill if already in cart */}
         {currentCartItem && (
           <span className="absolute top-2.5 right-2.5 bg-emerald-700 text-white text-xs px-2.5 py-0.5 rounded-full font-bold shadow-md">
-            {currentCartItem.voiceWeightBased
-              ? `${currentCartItem.weight} kg in cart`
-              : `${currentCartItem.quantity} in cart`}
+            {`${currentCartItem.quantity} in cart`}
           </span>
         )}
       </div>

@@ -2,8 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ShoppingBag, Truck, CheckCircle2, Clock, MapPin, ArrowLeft, RefreshCw, ChevronRight } from "lucide-react";
 import { motion } from "framer-motion";
-
-const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
+import { apiUrl } from "../config/api";
 
 const statusColors = {
   Placed: "bg-blue-500/20 text-blue-300 border-blue-400/30",
@@ -31,7 +30,14 @@ export default function MyOrders() {
   const fetchCustomerOrders = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${API}/orders/user/${encodeURIComponent(user.email)}`);
+      const res = await fetch(
+        apiUrl(`/orders/user/${encodeURIComponent(user.email)}`),
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
+          },
+        }
+      );
       const data = await res.json();
       if (data.success) {
         setOrders(data.orders || []);

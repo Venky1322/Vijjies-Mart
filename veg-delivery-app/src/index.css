@@ -1,1 +1,834 @@
 @import "tailwindcss";
+
+:root {
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #37443b;
+  background: #f7f8f5;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  --vm-green: #218838;
+  --vm-green-dark: #176b38;
+  --vm-green-soft: #eaf3e9;
+  --vm-ink: #37443b;
+  --vm-muted: #68756c;
+  --vm-border: #e3e9e1;
+  --vm-canvas: #f7f8f5;
+  --vm-card-shadow: 0 12px 32px rgba(34, 57, 39, 0.07);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-width: 320px;
+  scroll-behavior: smooth;
+  background: var(--vm-canvas);
+}
+
+html,
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+  background-color: var(--vm-canvas) !important;
+  color: var(--vm-ink);
+  font-family: inherit;
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  min-height: 100vh;
+  background-color: var(--vm-canvas) !important;
+}
+
+::selection {
+  color: #fff;
+  background: var(--vm-green);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button,
+a,
+input,
+select,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+
+:focus-visible {
+  outline: 3px solid #218838;
+  outline-offset: 3px;
+}
+
+button:not(:disabled),
+a[href],
+[role="button"] {
+  cursor: pointer;
+}
+
+:focus-visible {
+  outline: 3px solid rgba(40, 122, 70, 0.45);
+  outline-offset: 3px;
+}
+
+input,
+select,
+textarea {
+  max-width: 100%;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+/* Consistent surfaces across existing customer and operations screens. */
+[class*="bg-[#F7F8F5]"],
+[class*="bg-orange-50"],
+[class*="bg-gray-50"] {
+  background-color: var(--vm-canvas);
+}
+
+[class*="border-[#E5E7EB]"],
+[class*="border-gray-200"] {
+  border-color: var(--vm-border);
+}
+
+[class*="text-[#1F2937]"],
+[class*="text-gray-900"] {
+  color: var(--vm-ink);
+}
+
+[class*="text-gray-600"],
+[class*="text-gray-500"] {
+  color: var(--vm-muted);
+}
+
+.text-gray-200,
+.text-gray-300 {
+  color: var(--vm-muted);
+}
+
+[class*="text-orange-"] {
+  color: var(--vm-green);
+}
+
+[class*="bg-orange-100"],
+[class*="bg-orange-500/20"] {
+  background-color: var(--vm-green-soft);
+}
+
+[class*="border-orange-"] {
+  border-color: #cfe0ce;
+}
+
+[class*="rounded-2xl"][class*="bg-white"],
+[class*="rounded-3xl"][class*="bg-white"] {
+  box-shadow: var(--vm-card-shadow);
+}
+
+button,
+a[href] {
+  transition:
+    color 160ms ease,
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+/* Sticky, compact navigation with a touch-friendly scroll row on small screens. */
+.vm-navbar {
+  position: sticky;
+  z-index: 40;
+  top: 0;
+  min-height: 76px;
+  padding: 14px clamp(16px, 4vw, 56px);
+  background: rgba(255, 255, 255, 0.94);
+  border-color: rgba(227, 233, 225, 0.9);
+  box-shadow: 0 4px 18px rgba(34, 57, 39, 0.045);
+  backdrop-filter: blur(16px);
+}
+
+.vm-navbar > a:first-child {
+  flex: 0 0 auto;
+  color: var(--vm-green-dark);
+}
+
+.vm-navbar > a:first-child > div {
+  gap: 10px;
+  font-size: 1.15rem;
+  letter-spacing: -0.035em;
+}
+
+.vm-navbar > a:first-child svg {
+  color: var(--vm-green);
+}
+
+.vm-nav-actions {
+  gap: clamp(12px, 1.8vw, 26px);
+}
+
+.vm-mobile-menu {
+  display: none;
+}
+
+.vm-nav-actions > a:not(:has(svg)) {
+  color: #254d36;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.vm-nav-actions > a:not(:has(svg)):hover {
+  color: var(--vm-green);
+}
+
+.vm-nav-actions > a:has(svg) > div {
+  min-height: 42px;
+  border: 1px solid #dfe9df;
+  border-radius: 14px;
+  box-shadow: none;
+}
+
+.vm-nav-actions > a:has(svg):hover > div {
+  background: var(--vm-green-soft);
+  box-shadow: 0 6px 16px rgba(40, 122, 70, 0.12);
+}
+
+.vm-nav-actions button {
+  color: #fff;
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.vm-nav-actions > div > div {
+  max-width: 220px;
+  color: var(--vm-green-dark);
+}
+
+.vm-nav-actions > div > div span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Homepage: editorial hero and calmer, more consistent product browsing. */
+.vm-home {
+  min-height: 100vh;
+  overflow: visible;
+  padding-bottom: 0;
+  --vm-home-controls-space: 190px;
+  --vm-home-controls-open-space: 520px;
+  background-color: var(--vm-canvas);
+}
+
+.vm-home-persistent-controls {
+  position: fixed;
+  z-index: 45;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  max-height: calc(100dvh - 92px);
+  flex-direction: column;
+  overflow-y: auto;
+  padding-bottom: max(8px, env(safe-area-inset-bottom));
+  background-color: var(--vm-canvas);
+}
+
+.vm-home-scroll-content {
+  overflow: visible;
+  padding-bottom: calc(var(--vm-home-controls-space) + env(safe-area-inset-bottom));
+}
+
+.vm-home:has(.vm-voice-panel) {
+  --vm-home-controls-space: var(--vm-home-controls-open-space);
+}
+
+.vm-home > div:not(.vm-home-hero):not(.vm-shop-banner) {
+  background-color: var(--vm-canvas);
+}
+
+.vm-home [class*="bg-[#F1F8F3]"],
+.vm-home [class*="bg-[#EAF6EC]"] {
+  background-color: var(--vm-canvas);
+}
+
+.vm-home .vm-home-hero {
+  isolation: isolate;
+  width: 100%;
+  height: clamp(460px, calc(100svh - 76px), 760px);
+  min-height: 460px;
+  max-height: 700px;
+  max-width: none;
+  margin: 16px 0 0;
+  margin-left: 0;
+  margin-right: 0;
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  border-radius: 0;
+  background-color: var(--vm-canvas);
+  box-shadow: 0 22px 60px rgba(26, 70, 39, 0.16);
+}
+
+.vm-home-hero > img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  image-rendering: auto;
+  filter: contrast(1.02) saturate(1.06);
+}
+
+.vm-home-hero > .vm-home-hero-content {
+  align-items: flex-start;
+  padding: clamp(28px, 8vw, 112px);
+  text-align: left;
+  background: radial-gradient(
+    ellipse at 30% 40%,
+    rgba(14, 30, 20, 0.34) 0%,
+    rgba(14, 30, 20, 0.18) 42%,
+    rgba(14, 30, 20, 0) 76%
+  );
+}
+
+.vm-home-hero > div.absolute.inset-0.flex > div:first-child {
+  border-color: #dce8da;
+  color: var(--vm-green-dark);
+  box-shadow: 0 8px 26px rgba(36, 76, 43, 0.08);
+}
+
+.vm-home-hero h1 {
+  color: #fff;
+  font-size: clamp(3rem, 6.4vw, 5.8rem);
+  line-height: 0.98;
+  letter-spacing: -0.065em;
+  -webkit-text-stroke: 0;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+}
+
+.vm-home-hero h1 span:first-child,
+.vm-home-hero h1 span:last-child {
+  color: #fff;
+}
+
+.vm-home-hero p {
+  max-width: 550px;
+  color: #fff;
+  font-weight: 500;
+  text-shadow: 0 1px 5px rgba(0, 0, 0, 0.7);
+}
+
+.vm-home-hero input,
+.vm-home input,
+.vm-home select {
+  min-height: 48px;
+}
+
+.vm-home-hero input {
+  border-color: #d9e3d8;
+  box-shadow: 0 8px 26px rgba(33, 65, 38, 0.08);
+}
+
+.vm-home-hero button,
+.vm-home #products-section button,
+.vm-product-card button {
+  font-weight: 600;
+}
+
+.vm-shop-banner {
+  position: static;
+  width: min(100%, 1152px);
+  margin: 0 auto;
+  padding: 0 clamp(12px, 4vw, 32px);
+}
+
+.vm-shop-banner > div {
+  gap: 12px;
+  padding: 12px 18px;
+  border: 1px solid var(--vm-border);
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 12px 34px rgba(34, 57, 39, 0.16);
+}
+
+.vm-voice-assistant {
+  position: static;
+}
+
+.vm-voice-panel {
+  max-height: min(65vh, 560px, calc(100dvh - 400px));
+}
+
+.vm-home:has(.vm-home-cart-bar) {
+  padding-bottom: 0;
+}
+
+.vm-home-scroll-content:has(.vm-home-cart-bar) {
+  padding-bottom: calc(var(--vm-home-controls-space) + 100px + env(safe-area-inset-bottom));
+}
+
+.vm-home:has(.vm-home-cart-bar) .vm-home-persistent-controls {
+  bottom: calc(96px + env(safe-area-inset-bottom));
+}
+
+.vm-home-scroll-content > div > .max-w-6xl,
+.vm-home-scroll-content > div > .max-w-7xl,
+.vm-home-scroll-content #products-section,
+.vm-home-scroll-content #ai-recipe {
+  scroll-margin-top: 16px;
+}
+
+.vm-home #products-section {
+  padding-top: clamp(44px, 6vw, 80px);
+}
+
+.vm-home #products-section h2,
+.vm-home > div h2 {
+  letter-spacing: -0.035em;
+}
+
+.vm-product-card {
+  max-width: 320px;
+  border: 1px solid #e6ece4;
+  border-radius: 22px;
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(34, 57, 39, 0.07);
+}
+
+.vm-product-card:hover {
+  border-color: #c7ddc7;
+  box-shadow: 0 18px 36px rgba(34, 78, 42, 0.13);
+}
+
+.vm-product-card > div:first-child {
+  height: 190px;
+  background: #f1f5ed;
+}
+
+.vm-product-card > div:first-child img {
+  transition: transform 350ms ease;
+}
+
+.vm-product-card > div:first-child img:hover {
+  transform: scale(1.045);
+}
+
+.vm-product-card h3 {
+  color: var(--vm-ink);
+  font-size: 1rem;
+  letter-spacing: -0.015em;
+}
+
+.vm-product-card button {
+  min-height: 42px;
+}
+
+#ai-recipe button:not(:disabled) {
+  background: linear-gradient(120deg, var(--vm-green), var(--vm-green-dark));
+  box-shadow: 0 10px 24px rgba(40, 122, 70, 0.18);
+}
+
+.vm-recipe-card {
+  border: 1px solid var(--vm-border);
+  border-radius: 24px;
+  background: #fff;
+  box-shadow: var(--vm-card-shadow);
+}
+
+.vm-recipe-card:hover {
+  border-color: #c7ddc7;
+  box-shadow: 0 18px 36px rgba(34, 78, 42, 0.13);
+}
+
+.vm-recipe-card > div.relative.z-10 {
+  color: var(--vm-ink);
+}
+
+.vm-recipe-card h2 {
+  color: var(--vm-green-dark);
+}
+
+.vm-recipe-card p {
+  color: var(--vm-muted);
+}
+
+.vm-recipe-card [class*="bg-red-"] {
+  background-color: var(--vm-green);
+}
+
+.vm-recipe-card [class*="text-red-"] {
+  color: var(--vm-green);
+}
+
+.vm-home footer {
+  margin-top: 8px;
+  padding: 30px 20px;
+  background: #174b31;
+  border-color: #245c3e;
+  color: #f5f7f2;
+  line-height: 1.8;
+}
+
+/* Forms, status surfaces, and compact account cards. */
+input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+select,
+textarea {
+  border-radius: 12px;
+}
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):focus,
+select:focus,
+textarea:focus {
+  border-color: #75a982;
+  box-shadow: 0 0 0 3px rgba(40, 122, 70, 0.12);
+}
+
+/* Keep all existing dashboard panels legible while tightening their surfaces. */
+body #root > div.min-h-screen.flex > div:first-child {
+  border-color: var(--vm-border);
+}
+
+body #root > div.min-h-screen.flex > div:last-child {
+  min-width: 0;
+}
+
+body #root > div.min-h-screen.flex > div:last-child > .grid > div,
+body #root > div.min-h-screen.p-6 > div,
+body #root > div.min-h-screen.p-6 > section {
+  border-color: var(--vm-border);
+}
+
+/* Small viewport adjustments: preserve every link and control while avoiding overflow. */
+@media (max-width: 760px) {
+  .vm-home {
+    --vm-home-controls-space: 255px;
+    --vm-home-controls-open-space: 590px;
+  }
+
+  .vm-home-persistent-controls {
+    max-height: calc(100dvh - 92px - env(safe-area-inset-top));
+  }
+
+  .vm-navbar {
+    flex-wrap: wrap;
+    gap: 8px 16px;
+    min-height: auto;
+    padding: 12px 16px;
+  }
+
+  .vm-navbar > a:first-child {
+    margin-right: auto;
+  }
+
+  .vm-mobile-menu {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    min-height: 42px;
+    padding: 8px 12px;
+    border: 1px solid var(--vm-border);
+    border-radius: 12px;
+    background: #fff;
+    color: var(--vm-green-dark);
+    font-size: 0.875rem;
+    font-weight: 650;
+  }
+
+  .vm-nav-actions {
+    display: none;
+    width: 100%;
+    max-width: 100%;
+    gap: 8px;
+    overflow: visible;
+    padding: 8px 0 2px;
+    white-space: normal;
+  }
+
+  .vm-nav-actions.vm-nav-actions-open {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .vm-nav-actions > a,
+  .vm-nav-actions > div {
+    flex: 0 0 auto;
+  }
+
+  .vm-nav-actions > a > div,
+  .vm-nav-actions > a > button,
+  .vm-nav-actions > div > button,
+  .vm-nav-actions > div > div {
+    min-height: 42px;
+  }
+
+  .vm-nav-actions > a > div {
+    display: flex;
+    align-items: center;
+  }
+
+  .vm-nav-actions > a:not(:has(svg)) > div {
+    font-size: 0.82rem;
+  }
+
+  .vm-home .vm-home-hero {
+    width: 100%;
+    min-height: 400px;
+    height: clamp(400px, 68svh, 620px);
+    margin-top: 12px;
+    margin-left: 0;
+    margin-right: 0;
+  }
+
+  .vm-home-hero > .vm-home-hero-content {
+    justify-content: center;
+    padding: 26px 22px;
+    background: radial-gradient(
+      ellipse at 50% 48%,
+      rgba(14, 30, 20, 0.34) 0%,
+      rgba(14, 30, 20, 0.18) 48%,
+      rgba(14, 30, 20, 0) 78%
+    );
+  }
+
+  .vm-home-hero h1 {
+    font-size: clamp(2.7rem, 11vw, 4rem);
+  }
+
+  .vm-home-hero > div.absolute.inset-0.flex > div:nth-last-child(2) {
+    justify-content: flex-start;
+    gap: 8px;
+  }
+
+  .vm-shop-banner {
+    padding-right: 12px;
+    padding-left: 12px;
+  }
+
+  .vm-shop-banner > div {
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .vm-shop-banner > div > div:first-child {
+    width: 100%;
+    gap: 10px;
+  }
+
+  .vm-shop-banner > div > div:first-child > div:last-child p {
+    font-size: 0.72rem;
+  }
+
+  .vm-shop-banner > div > div:last-child {
+    width: 100%;
+    gap: 8px;
+  }
+
+  .vm-shop-banner > div > div:last-child a {
+    flex: 1;
+    min-width: 0;
+    padding: 10px 12px;
+    text-align: center;
+  }
+
+  .vm-voice-panel {
+    max-height: min(58vh, 500px, calc(100dvh - 460px));
+  }
+
+  .vm-home-scroll-content:has(.vm-home-cart-bar) {
+    padding-bottom: calc(var(--vm-home-controls-space) + 100px + env(safe-area-inset-bottom));
+  }
+
+  .vm-product-card > div:first-child {
+    height: 150px;
+  }
+
+  .vm-home #products-section {
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+
+  body #root > div.min-h-screen.flex {
+    flex-direction: column;
+  }
+
+  body #root > div.min-h-screen.flex > div:first-child {
+    width: 100%;
+    padding: 16px;
+    border-right: 0;
+    border-bottom: 1px solid var(--vm-border);
+  }
+
+  body #root > div.min-h-screen.flex > div:first-child .space-y-4 {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  body #root > div.min-h-screen.flex > div:first-child .space-y-4 > * {
+    padding: 10px 12px;
+  }
+
+  body #root > div.min-h-screen.flex > div:last-child {
+    padding: 18px;
+  }
+}
+
+@media (max-width: 480px) {
+  .vm-navbar > a:first-child > div {
+    font-size: 1rem;
+  }
+
+  .vm-nav-actions {
+    margin-right: -16px;
+    width: calc(100% + 16px);
+  }
+
+  .vm-home .vm-home-hero {
+    min-height: 460px;
+  }
+
+  .vm-home-hero > .vm-home-hero-content {
+    padding: 22px 18px;
+  }
+
+  .vm-home-hero > div.absolute.inset-0.flex > div:nth-last-child(2) {
+    flex-wrap: wrap;
+  }
+
+  .vm-product-card > div:first-child {
+    height: 126px;
+  }
+
+  .vm-product-card > div:nth-child(2) {
+    padding: 12px;
+  }
+
+  .vm-product-card > div:nth-child(2) > div:first-of-type {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  [class*="grid-cols-2"] {
+    gap: 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Keep every page on the cement canvas and every text element on one font stack. */
+#root {
+  min-height: 100vh;
+  background-color: var(--vm-canvas);
+}
+
+#root [class*="min-h-screen"],
+#root [class*="bg-[#F7F8F5]"],
+#root [class*="bg-[#F1F8F3]"],
+#root [class*="bg-[#EAF6EC]"],
+#root [class*="bg-orange-50"],
+#root [class*="bg-gray-50"] {
+  background-color: var(--vm-canvas);
+}
+
+:root,
+body,
+#root,
+#root *,
+#root *::before,
+#root *::after {
+  font-family: "Lucida Console", "Courier New", monospace !important;
+}
+
+#root :is(input, textarea)::placeholder {
+  color: #68756c;
+  opacity: 1;
+  font-family: "Lucida Console", "Courier New", monospace !important;
+}
+
+#root :is(.text-gray-500, .text-gray-600, .text-gray-700, .text-gray-800),
+#root [class*="text-[#1F2937]"] {
+  color: #37443b;
+}
+
+#root :is(.text-gray-500, .text-gray-600) {
+  color: #68756c;
+}
+
+#root [class*="text-green-"],
+#root [class*="text-emerald-"] {
+  color: #176b38;
+}
+
+#root .vm-navbar .vm-nav-actions > a,
+#root .vm-navbar .vm-nav-actions > a > div {
+  color: #254d36;
+}
+
+#root .vm-navbar .vm-nav-actions > a:hover,
+#root .vm-navbar .vm-nav-actions > a:hover > div {
+  color: #218838;
+}
+
+#root .vm-navbar .vm-nav-actions button {
+  background-color: #218838;
+  background-image: none;
+  color: #fff;
+}
+
+#root button[class*="bg-green-"],
+#root button[class*="bg-emerald-"],
+#root button[class*="from-green-"],
+#root button[class*="from-emerald-"] {
+  background-color: #218838;
+  background-image: none;
+  color: #fff;
+}
+
+#root .vm-product-card .text-emerald-700 {
+  color: #176b38;
+  font-weight: 700;
+}
+
+#root .vm-product-card h3 {
+  color: #183b2b;
+  font-weight: 600;
+}
+
+#root .flex.justify-between.text-green-700.font-semibold,
+#root .flex.justify-between.text-emerald-700.font-semibold {
+  color: #c84c42;
+}
+
+#root footer,
+#root footer [class*="text-"],
+#root footer :is(h1, h2, h3, h4, h5, h6, p, a, span, li, small) {
+  color: #f5f7f2;
+}

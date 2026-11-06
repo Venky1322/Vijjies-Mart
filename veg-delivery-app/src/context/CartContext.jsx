@@ -1,6 +1,16 @@
 import { createContext, useState, useEffect } from "react";
+import { priceForWeight, roundMoney, toPaise, fromPaise } from "../utils/money";
 
 export const CartContext = createContext();
+
+const matchesCartItem = (item, id, weight = 1, voiceWeightBased = false) => {
+  const sameProduct = String(item.productId ?? item.id) === String(id);
+  const sameKind = Boolean(item.voiceWeightBased) === voiceWeightBased;
+  const sameWeight =
+    voiceWeightBased || Number(item.weight ?? 1) === Number(weight ?? 1);
+
+  return sameProduct && sameKind && sameWeight;
+};
 
 const CartProvider = ({ children }) => {
 
@@ -17,27 +27,53 @@ const CartProvider = ({ children }) => {
 
   // ➕ Add
   const addToCart = (item) => {
-    const existing = cart.find((i) => i.id === item.id);
-
-    if (existing) {
-      setCart(
-        cart.map((i) =>
-          i.id === item.id
-            ? i.voiceWeightBased
-              ? {
-                  ...i,
-                  weight: Number(i.weight) + Number(item.weight || 1),
-                  price:
-                    Number(i.pricePerKg) *
-                    (Number(i.weight) + Number(item.weight || 1)),
-                }
-              : { ...i, quantity: i.quantity + 1 }
-            : i
+    setCart((currentCart) => {
+      const existing = currentCart.find((cartItem) =>
+        matchesCartItem(
+          cartItem,
+          item.id,
+          item.weight,
+          Boolean(item.voiceWeightBased)
         )
       );
-    } else {
-      setCart([...cart, { ...item, quantity: 1 }]);
-    }
+
+      if (!existing) {
+        return [
+          ...currentCart,
+          {
+            ...item,
+            price: roundMoney(item.price),
+            quantity: 1,
+          },
+        ];
+      }
+
+      return currentCart.map((cartItem) => {
+        if (!matchesCartItem(
+          cartItem,
+          item.id,
+          item.weight,
+          Boolean(item.voiceWeightBased)
+        )) {
+          return cartItem;
+        }
+
+        if (cartItem.voiceWeightBased) {
+          const weight =
+            Number(cartItem.weight) + Number(item.weight || 1);
+          return {
+            ...cartItem,
+            weight,
+            price: priceForWeight(cartItem.pricePerKg, weight),
+          };
+        }
+
+        return {
+          ...cartItem,
+          quantity: Number(cartItem.quantity || 1) + 1,
+        };
+      });
+    });
   };
 
   const addVoiceOrderItems = (items) => {
@@ -64,7 +100,7 @@ const CartProvider = ({ children }) => {
           id: product._id,
           productId: product._id,
           name: product.name,
-          price: pricePerKg * totalWeight,
+          price: priceForWeight(pricePerKg, totalWeight),
           pricePerKg,
           weight: totalWeight,
           quantity: 1,
@@ -87,48 +123,60 @@ const CartProvider = ({ children }) => {
   };
 
   // ❌ Remove
-  const removeFromCart = (id) => {
-    setCart(cart.filter((item) => item.id !== id));
-  };
-
-  // ➕ Increase
-  const increaseQty = (id) => {
-    setCart(
-      cart.map((item) =>
-        item.id === id
-          ? item.voiceWeightBased
-            ? {
-                ...item,
-                weight: Number(item.weight) + 0.25,
-                price:
-                  Number(item.pricePerKg) * (Number(item.weight) + 0.25),
-              }
-            : { ...item, quantity: item.quantity + 1 }
-          : item
+  const removeFromCart = (id, weight = 1, voiceWeightBased = false) => {
+    setCart((currentCart) =>
+      currentCart.filter(
+        (item) => !matchesCartItem(item, id, weight, voiceWeightBased)
       )
     );
   };
 
+  // ➕ Increase
+  const increaseQty = (id, weight = 1, voiceWeightBased = false) => {
+    setCart((currentCart) =>
+      currentCart.map((item) => {
+        if (!matchesCartItem(item, id, weight, voiceWeightBased)) {
+          return item;
+        }
+
+        if (item.voiceWeightBased) {
+          const nextWeight = Number(item.weight) + 0.25;
+          return {
+            ...item,
+            weight: nextWeight,
+            price: priceForWeight(item.pricePerKg, nextWeight),
+          };
+        }
+
+        return { ...item, quantity: Number(item.quantity || 1) + 1 };
+      })
+    );
+  };
+
   // ➖ Decrease
-  const decreaseQty = (id) => {
-    setCart(
-      cart
-        .map((item) =>
-          item.id === id
-            ? item.voiceWeightBased
-              ? {
-                  ...item,
-                  weight: Number(item.weight) - 0.25,
-                  price:
-                    Number(item.pricePerKg) * (Number(item.weight) - 0.25),
-                }
-              : { ...item, quantity: item.quantity - 1 }
-            : item
-        )
+  const decreaseQty = (id, weight = 1, voiceWeightBased = false) => {
+    setCart((currentCart) =>
+      currentCart
+        .map((item) => {
+          if (!matchesCartItem(item, id, weight, voiceWeightBased)) {
+            return item;
+          }
+
+          if (item.voiceWeightBased) {
+            const nextWeight = Number(item.weight) - 0.25;
+            return {
+              ...item,
+              weight: nextWeight,
+              price: priceForWeight(item.pricePerKg, nextWeight),
+            };
+          }
+
+          return { ...item, quantity: Number(item.quantity || 1) - 1 };
+        })
         .filter((item) =>
           item.voiceWeightBased
             ? Number(item.weight) > 0
-            : item.quantity > 0
+            : Number(item.quantity) > 0
         )
     );
   };
@@ -140,9 +188,12 @@ const CartProvider = ({ children }) => {
   };
 
   // 💰 Total
-  const totalPrice = cart.reduce(
-    (total, item) => total + item.price * item.quantity,
-    0
+  const totalPrice = fromPaise(
+    cart.reduce(
+      (total, item) =>
+        total + toPaise(item.price) * Number(item.quantity || 1),
+      0
+    )
   );
 
   // 🧮 Total items

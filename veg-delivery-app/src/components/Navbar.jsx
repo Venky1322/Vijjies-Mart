@@ -8,6 +8,7 @@ import {
   Info,
   Phone,
   X,
+  Menu,
   Package,
 } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
@@ -23,8 +24,10 @@ const Navbar = () => {
   const [user, setUser] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   useEffect(() => {
+    setIsMenuOpen(false);
     const savedUser = localStorage.getItem("user");
     const adminFlag = localStorage.getItem("admin");
     const parsedUser = savedUser ? JSON.parse(savedUser) : null;
@@ -50,17 +53,32 @@ const Navbar = () => {
       <motion.div
         initial={{ y: -60, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        className="bg-white border-b border-[#E5E7EB] shadow-sm px-6 py-4 flex justify-between items-center text-[#1F2937]"
+        className="vm-navbar bg-white border-b border-[#E5E7EB] shadow-sm px-6 py-4 flex justify-between items-center text-[#1F2937]"
       >
         {/* 🌿 LOGO */}
         <Link to="/">
           <div className="flex items-center gap-2 text-xl font-bold cursor-pointer">
             <Leaf size={26} />
-            Veggies-mart
+            Vejjies-mart
           </div>
         </Link>
 
-        <div className="flex items-center gap-6">
+        <button
+          type="button"
+          className="vm-mobile-menu"
+          aria-expanded={isMenuOpen}
+          aria-controls="primary-navigation"
+          onClick={() => setIsMenuOpen((open) => !open)}
+        >
+          {isMenuOpen ? <X size={20} /> : <Menu size={20} />}
+          <span>{isMenuOpen ? "Close menu" : "Menu"}</span>
+        </button>
+
+        <nav
+          id="primary-navigation"
+          aria-label="Primary navigation"
+          className={`vm-nav-actions flex items-center gap-6 ${isMenuOpen ? "vm-nav-actions-open" : ""}`}
+        >
           {/* 👤 USER NAVIGATION */}
           {user && !isAdmin && (
             <>
@@ -88,12 +106,15 @@ const Navbar = () => {
                 </div>
               </Link>
 
-              <Link to="/contact">
-                <div className="flex items-center gap-1 hover:text-green-700 transition">
-                  <Phone size={18} /> Contact
-                </div>
-              </Link>
             </>
+          )}
+
+          {!isAdmin && (
+            <Link to="/contact">
+              <div className="flex items-center gap-1 hover:text-green-700 transition">
+                <Phone size={18} /> Contact
+              </div>
+            </Link>
           )}
 
           {/* 🛒 CART */}
@@ -152,7 +173,7 @@ const Navbar = () => {
               </button>
             </div>
           )}
-        </div>
+        </nav>
       </motion.div>
 
       {/* ================= PROFILE POPUP ================= */}

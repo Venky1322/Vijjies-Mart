@@ -51,6 +51,27 @@ const orderSchema = new mongoose.Schema(
       trim: true,
     },
 
+    checkoutRequestId: {
+      type: String,
+      default: undefined,
+    },
+
+    stockReservationStatus: {
+      type: String,
+      enum: ["reserved", "committed", "released"],
+      default: "committed",
+    },
+
+    reservationExpiresAt: {
+      type: Date,
+      default: null,
+    },
+
+    stockReleasedAt: {
+      type: Date,
+      default: null,
+    },
+
     // 💳 Payment Method
     paymentMethod: {
       type: String,
@@ -80,7 +101,7 @@ const orderSchema = new mongoose.Schema(
       default: "",
     },
 
-    // Amount received from Razorpay
+    // Amount in paise expected from Razorpay and verified against the provider.
     paymentAmount: {
       type: Number,
       default: 0,
@@ -106,6 +127,17 @@ const orderSchema = new mongoose.Schema(
       type: String,
       enum: ["pending", "paid", "failed", "refunded"],
       default: "pending",
+    },
+
+    refundStatus: {
+      type: String,
+      enum: ["none", "pending", "processed", "failed"],
+      default: "none",
+    },
+
+    refundId: {
+      type: String,
+      default: "",
     },
 
     // ============================
@@ -202,6 +234,14 @@ const orderSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
+  }
+);
+
+orderSchema.index(
+  { userEmail: 1, checkoutRequestId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { checkoutRequestId: { $type: "string" } },
   }
 );
 

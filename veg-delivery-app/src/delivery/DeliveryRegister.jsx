@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-
-const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
+import { apiUrl } from "../config/api";
 
 const DeliveryRegister = () => {
   const navigate = useNavigate();
@@ -29,7 +28,7 @@ const DeliveryRegister = () => {
         return alert("Passwords do not match");
       }
 
-      const res = await fetch(`${API}/auth/register`, {
+      const res = await fetch(apiUrl("/auth/register"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

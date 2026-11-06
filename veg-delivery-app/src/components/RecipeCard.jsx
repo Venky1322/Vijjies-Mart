@@ -24,6 +24,7 @@ const RecipeCard = ({ recipe }) => {
       }
       className="
       group
+      vm-recipe-card
       relative
       overflow-hidden
       rounded-[30px]

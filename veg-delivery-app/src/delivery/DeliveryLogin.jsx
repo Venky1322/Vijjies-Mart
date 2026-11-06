@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-
-const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
+import { apiUrl } from "../config/api";
 
 const DeliveryLogin = () => {
 const navigate = useNavigate();
@@ -19,7 +18,7 @@ return;
 }
 
 
-  const res = await fetch(`${API}/auth/login`, {
+  const res = await fetch(apiUrl("/auth/login"), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -31,8 +30,6 @@ return;
   });
 
   const data = await res.json();
-
-  console.log("Login response:", data);
 
   if (!res.ok) {
     alert(data.message || "Login failed");

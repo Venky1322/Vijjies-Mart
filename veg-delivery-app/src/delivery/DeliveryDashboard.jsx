@@ -5,11 +5,10 @@ import {
   useMotionValue,
   useTransform,
 } from "framer-motion";
+import { apiUrl } from "../config/api";
 
 const DeliveryDashboard = () => {
   const navigate = useNavigate();
-  const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
-
   const [orders, setOrders] = useState([]);
 
   const [location, setLocation] = useState(null);
@@ -46,7 +45,12 @@ const DeliveryDashboard = () => {
       }
 
       const res = await fetch(
-        `${API}/orders/partner/${partnerId}`
+        apiUrl(`/orders/partner/${partnerId}`),
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
+          },
+        }
       );
 
       const data = await res.json();
@@ -100,7 +104,7 @@ const DeliveryDashboard = () => {
         try {
           // Send location to backend
           const res = await fetch(
-            `${API}/delivery/update-location`,
+            apiUrl("/delivery/update-location"),
             {
               method: "POST",
               headers: {
@@ -156,9 +160,12 @@ const DeliveryDashboard = () => {
 
   const updateStatus = async (id, status) => {
     try {
-      await fetch(`${API}/orders/${id}/status`, {
+      await fetch(apiUrl(`/orders/${id}/status`), {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
+        },
         body: JSON.stringify({ status }),
       });
 

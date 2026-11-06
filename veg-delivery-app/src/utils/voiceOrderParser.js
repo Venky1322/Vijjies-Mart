@@ -8,7 +8,9 @@ const PRODUCT_ALIASES = {
     "tomato",
     "tomatoes",
     "టమాటా",
+    "టమాటో",
     "టమాట",
+    "టమోటో",
     "టొమాటో",
     "टमाटर",
     "ಟೊಮೆಟೊ",
@@ -38,6 +40,7 @@ const PRODUCT_ALIASES = {
     "potato",
     "potatoes",
     "బంగాళాదుంప",
+    "బంగాళాదుంపలు",
     "आलू",
     "ಆಲೂಗಡ್ಡೆ",
     "உருளைக்கிழங்கு",
@@ -102,14 +105,16 @@ const QUANTITY_WORDS = [
   [/\bten\b/gi, "10"],
   [/\beleven\b/gi, "11"],
   [/\btwelve\b/gi, "12"],
+  [/\b(?:oka|okati)\b/gi, "1"],
+  [/\brendu\b/gi, "2"],
   [/ఒకటిన్నర/g, "1.5"],
   [/అర\s*కిలో|అరకిలో|అర\s*కేజీ|అరకేజీ/g, "0.5 kg "],
   [/పావు\s*కిలో|పావుకిలో|పావు\s*కేజీ|పావుకేజీ/g, "0.25 kg "],
   [/ముప్పావు/g, "0.75"],
   [/పావు|పావుకి/g, "0.25"],
   [/అర(?:\s|$)/g, "0.5 "],
-  [/ఒకటి|ఒక/g, "1"],
-  [/రెండు/g, "2"],
+  [/(?<![\p{L}\p{N}])(?:ఒకటి|ఒక)(?![\p{L}\p{N}])/gu, "1"],
+  [/(?<![\p{L}\p{N}])రెండు(?![\p{L}\p{N}])/gu, "2"],
   [/మూడు/g, "3"],
   [/నాలుగు/g, "4"],
   [/ఐదు/g, "5"],
@@ -175,7 +180,7 @@ const QUANTITY_UNITS = [
   [/\bkilos?\b/gi, "kg"],
   [/\bkgs?\b/gi, "kg"],
   [/\bgrams?\b/gi, "g"],
-  [/కిలోగ్రాములు|కిలోగ్రాము|కిలోలు|కిలో|కేజీలు|కేజీ/g, "kg"],
+  [/కిలోగ్రాములు|కిలోగ్రాము|కిలోల|కిలోలు|కిలో|కేజీలు|కేజీ/g, " kg "],
   [/గ్రాములు|గ్రాము/g, "g"],
   [/किलोग्राम|किलो/g, "kg"],
   [/ग्राम/g, "g"],
@@ -193,10 +198,13 @@ const QUANTITY_UNITS = [
 ];
 
 const FILLER_WORDS =
-  /\b(i|want|need|would|like|can|please|add|give|me|get|buy|put|of|the|some|a|an|and|also|per|kg|g)\b/giu;
+  /\b(i|want|need|would|like|can|please|add|give|me|get|buy|put|of|the|some|a|an|and|also|per|kg|g|kavali|kaavali|kavaali|ivvandi|ivvu|cheyyi|veyi|veyandi)\b/giu;
 
 const NON_LATIN_FILLER_WORDS =
-  /మరియు|और|तथा|ಮತ್ತು|மற்றும்|കൂടാതെ|आणि|এবং/gu;
+  /మరియు|నాకు|కావాలి|కావలెను|ఇవ్వండి|ఇవ్వు|వేయి|వేయండి|పెట్టండి|పెట్టు|జోడించండి|జోడించు|కార్ట్\s*లో|కార్ట్‌లో|కార్టులో|కార్ట్‌కు|और|तथा|ಮತ್ತು|மற்றும்|കൂടാതെ|आणि|এবং/gu;
+
+export const hasDozenQuantityRequest = (transcript) =>
+  typeof transcript === "string" && /(?:\bdozens?\b|డజను|డజన్లు|డజన్)/iu.test(transcript);
 
 const removeFillerWords = (text) =>
   text.replace(FILLER_WORDS, " ").replace(NON_LATIN_FILLER_WORDS, " ");

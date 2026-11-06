@@ -1,16 +1,29 @@
 const express = require("express");
 const mongoose = require("mongoose");
-const cors = require("cors");
+const {
+  createCorsMiddleware,
+  parseFrontendOrigins,
+} = require("./config/cors");
 
 require("dotenv").config();
+const Order = require("./models/Order");
+const paymentRoutes = require("./routes/paymentRoutes");
 
 const app = express();
+const isProduction = process.env.NODE_ENV === "production";
+const allowedOrigins = parseFrontendOrigins(process.env.FRONTEND_URL);
+
+if (isProduction && allowedOrigins.length === 0) {
+  throw new Error(
+    "FRONTEND_URL must contain at least one allowed frontend origin in production."
+  );
+}
 
 // =======================================
 // Middleware
 // =======================================
 
-app.use(cors());
+app.use(createCorsMiddleware(allowedOrigins, isProduction));
 app.use(express.json());
 
 // =======================================
@@ -20,7 +33,7 @@ app.use(express.json());
 app.use("/products", require("./routes/productRoutes"));
 app.use("/orders", require("./routes/orderRoutes"));
 app.use("/auth", require("./routes/authRoutes"));
-app.use("/payment", require("./routes/paymentRoutes"));
+app.use("/payment", paymentRoutes);
 app.use("/api/recipes", require("./routes/recipeRoutes"));
 app.use("/delivery", require("./routes/deliveryRoutes"));
 
@@ -46,7 +59,7 @@ const MONGO_URL = process.env.MONGO_URL;
 const PORT = process.env.PORT || 5000;
 
 console.log("=================================");
-console.log("Mongo URL:", MONGO_URL);
+console.log("Mongo URL configured:", Boolean(MONGO_URL));
 console.log("Port:", PORT);
 console.log("=================================");
 
@@ -57,7 +70,20 @@ console.log("=================================");
 mongoose
   .connect(MONGO_URL)
   .then(() => {
-    console.log("✅ MongoDB Atlas Connected");
+    return Order.init();
+  })
+  .then(() => {
+    console.log("✅ MongoDB connected; order indexes initialized");
+
+    const reconcileInterval = setInterval(() => {
+      paymentRoutes.reconcileExpiredReservations().catch((err) => {
+        console.error("Expired payment reservation reconciliation failed:", err.message);
+      });
+    }, 60 * 1000);
+    reconcileInterval.unref();
+    paymentRoutes.reconcileExpiredReservations().catch((err) => {
+      console.error("Expired payment reservation reconciliation failed:", err.message);
+    });
 
     app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);

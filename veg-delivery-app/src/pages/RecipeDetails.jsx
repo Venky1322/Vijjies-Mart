@@ -6,6 +6,7 @@ import React, {
 import {
   useParams,
 } from "react-router-dom";
+import { apiUrl } from "../config/api";
 
 import {
   Globe,
@@ -125,7 +126,7 @@ const RecipeDetails = () => {
     try {
 
       const res = await fetch(
-        `http://localhost:5000/api/recipes/${id}`
+        apiUrl(`/api/recipes/${id}`)
       );
 
       const data =
@@ -170,7 +171,7 @@ const RecipeDetails = () => {
         }
 
         const res = await fetch(
-          "http://localhost:5000/api/recipes/translate",
+          apiUrl("/api/recipes/translate"),
           {
             method: "POST",
 

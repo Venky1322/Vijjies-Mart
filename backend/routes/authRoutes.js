@@ -17,8 +17,6 @@ router.get("/test", (req, res) => {
 const verifyToken = (req, res, next) => {
   const authHeader = req.headers.authorization;
 
-  console.log("AUTH HEADER:", authHeader);
-
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     return res.status(401).json({
       success: false,
@@ -30,8 +28,6 @@ const verifyToken = (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-    console.log("DECODED USER:", decoded);
 
     req.user = decoded;
     next();
@@ -97,6 +93,13 @@ router.post("/register", async (req, res) => {
 
     email = email.toLowerCase().trim();
     mobile = mobile.trim();
+    const assignedRole = role || "user";
+    if (!["user", "delivery"].includes(assignedRole)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid account role",
+      });
+    }
 
     const existingUser =
       await User.findOne({
@@ -125,8 +128,7 @@ router.post("/register", async (req, res) => {
       mobile,
       password:
         hashedPassword,
-      role:
-        role || "user",
+      role: assignedRole,
     });
 
     await user.save();

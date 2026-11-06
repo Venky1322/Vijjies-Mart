@@ -194,3 +194,12 @@ The platform can work with:
 VIJJIES-MART is a startup project developed for commercial use.
 
 The source code, design, branding, business logic, and associated assets are proprietary and may not be copied, modified, distributed, or used for commercial purposes without prior written permission from the VIJJIES-MART team.
+## Node.js runtime
+
+The workspace requires Node.js `^20.19.0 || >=22.12.0` (Node.js 20.19.0 or
+later 20.x, or 22.12.0 and later). This range reflects the engine requirements
+in the currently locked backend and frontend dependencies. Node.js 21 and
+Node.js 22 releases before 22.12.0 do not satisfy the frontend toolchain range.
+
+This repository declaration does not verify or configure the Node.js runtime
+used by any production hosting platform.

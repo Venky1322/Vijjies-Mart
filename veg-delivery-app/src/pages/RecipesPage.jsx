@@ -6,6 +6,7 @@ import React, {
 import {
   useParams,
 } from "react-router-dom";
+import { apiUrl } from "../config/api";
 
 const RecipeDetails = () => {
 
@@ -39,7 +40,7 @@ const RecipeDetails = () => {
       );
 
       const res = await fetch(
-        `http://localhost:5000/api/recipes/${id}`
+        apiUrl(`/api/recipes/${id}`)
       );
 
       const data =

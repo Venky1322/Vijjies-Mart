@@ -2,8 +2,7 @@ import { motion } from "framer-motion";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { Clock3, MapPin, Truck, CheckCircle2, ArrowLeft, RefreshCw, ShoppingBag, AlertCircle } from "lucide-react";
-
-const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
+import { apiUrl } from "../config/api";
 
 // Exact backend order status sequence
 const ORDER_STEPS = [
@@ -45,7 +44,11 @@ const Delivery = () => {
   const fetchOrderDetails = async () => {
     try {
       if (orderIdFromUrl) {
-        const res = await fetch(`${API}/orders/${orderIdFromUrl}`);
+        const res = await fetch(apiUrl(`/orders/${orderIdFromUrl}`), {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
+          },
+        });
         const data = await res.json();
         if (data.success && data.order) {
           setOrder(data.order);
@@ -55,7 +58,14 @@ const Delivery = () => {
         }
       } else if (user?.email) {
         // Fetch latest order for logged in customer
-        const res = await fetch(`${API}/orders/user/${encodeURIComponent(user.email)}`);
+        const res = await fetch(
+          apiUrl(`/orders/user/${encodeURIComponent(user.email)}`),
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
+            },
+          }
+        );
         const data = await res.json();
         if (data.success && data.orders && data.orders.length > 0) {
           setOrder(data.orders[0]);
@@ -78,7 +88,7 @@ const Delivery = () => {
     if (orderData?.deliveryPartnerId?._id) {
       const partnerId = orderData.deliveryPartnerId._id;
       try {
-        const res = await fetch(`${API}/delivery/location/${partnerId}`);
+        const res = await fetch(apiUrl(`/delivery/location/${partnerId}`));
         const data = await res.json();
         if (data.success && data.liveLocation?.lat && data.liveLocation?.lng) {
           setPartnerLocation(data.liveLocation);

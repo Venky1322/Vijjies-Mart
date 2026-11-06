@@ -5,153 +5,165 @@ const nodemailer = require("nodemailer");
 
 const Order = require("../models/Order");
 const Product = require("../models/Product");
+const User = require("../models/User");
+const { verifyToken, isAdmin, isDelivery } = require("./authRoutes");
+const {
+  OrderValidationError,
+  normalizeOrderItems,
+  sameCheckoutRequest,
+  validateCustomerLocation,
+} = require("../services/orderPricing");
+const {
+  createReservedOrder,
+  transitionOrder,
+} = require("../services/orderLifecycle");
+const { canAccessOrder, canEmailOrderInvoice } = require("../services/orderAccess");
 
+const CHECKOUT_ID_PATTERN = /^[a-zA-Z0-9_-]{16,128}$/;
+const VENDOR_LOCATION = { lat: 17.385, lng: 78.4867 };
 
-// ✅ PLACE ORDER (FIXED WITH WEIGHT SUPPORT)
-router.post("/", async (req, res) => {
+const getCheckoutRequestId = (req) => {
+  const requestId = req.get("Idempotency-Key");
+  if (!CHECKOUT_ID_PATTERN.test(requestId || "")) {
+    throw new OrderValidationError("A valid Idempotency-Key header is required");
+  }
+  return requestId;
+};
+
+const getRequestItems = (items) => {
+  if (!Array.isArray(items) || items.length === 0) {
+    throw new OrderValidationError("At least one product is required");
+  }
+
+  return items.map((item) => {
+    const productId = String(item?.productId ?? item?.id ?? "");
+    if (!mongoose.Types.ObjectId.isValid(productId) || !/^[a-f\d]{24}$/i.test(productId)) {
+      throw new OrderValidationError("Invalid product ID");
+    }
+
+    return {
+      productId,
+      weight: Number(item.weight),
+      quantity: Number(item.quantity),
+    };
+  });
+};
+
+const respondWithExistingOrder = (res, order, paymentMethod, items, location) => {
+  if (!sameCheckoutRequest(order, items, location, paymentMethod)) {
+    return res.status(409).json({
+      success: false,
+      message: "Idempotency-Key was already used for a different checkout",
+    });
+  }
+
+  if (
+    order.paymentStatus !== "pending" ||
+    order.stockReservationStatus === "released"
+  ) {
+    return res.status(409).json({
+      success: false,
+      message: "This checkout has already been completed or expired",
+    });
+  }
+
+  return res.status(200).json({ success: true, order });
+};
+
+// Place a COD order; online orders are created by /payment/create-order.
+router.post("/", verifyToken, async (req, res) => {
   try {
-
-    let {
-      items,
-      total,
-      userEmail,
-      paymentMethod,
-      notifyAdmin,
-      customerLocation,
-    } = req.body;
-
-    if (
-      !items ||
-      !items.length ||
-      !total ||
-      !userEmail
-    ) {
-      return res.status(400).json({
-        message: "Missing required fields",
-      });
-    }
-    if (
-      !customerLocation ||
-      typeof customerLocation.lat !== "number" ||
-      typeof customerLocation.lng !== "number"
-    ) {
-      return res.status(400).json({
-        message: "Customer location is required",
-      });
+    if (req.user?.role !== "user" || !req.user.email) {
+      return res.status(403).json({ success: false, message: "Customer account required" });
     }
 
-    paymentMethod = paymentMethod
-      ? paymentMethod.toUpperCase()
-      : "COD";
-
-    if (
-      !["COD", "ONLINE"].includes(
-        paymentMethod
-      )
-    ) {
-      paymentMethod = "COD";
+    const checkoutRequestId = getCheckoutRequestId(req);
+    const paymentMethod = String(req.body.paymentMethod || "COD").toUpperCase();
+    if (paymentMethod !== "COD") {
+      throw new OrderValidationError("Use the online payment endpoint for online orders");
     }
 
-    // 🔥 REDUCE STOCK
-    for (let item of items) {
+    const location = validateCustomerLocation(req.body.customerLocation);
+    const requestedItems = getRequestItems(req.body.items);
+    const userEmail = req.user.email.toLowerCase().trim();
 
-      if (
-        !mongoose.Types.ObjectId.isValid(
-          item.productId
-        )
-      ) continue;
-
-      const product =
-        await Product.findById(
-          item.productId
-        );
-
-      if (!product) {
-
-        return res.status(404).json({
-          message:
-            `Product not found: ${item.name}`,
-        });
-      }
-
-      const weight = parseFloat(
-        item.weight ??
-        item.quantity ??
-        0
+    const existingOrder = await Order.findOne({ userEmail, checkoutRequestId });
+    if (existingOrder) {
+      return respondWithExistingOrder(
+        res,
+        existingOrder,
+        paymentMethod,
+        requestedItems,
+        location
       );
-
-      if (product.stock < weight) {
-
-        return res.status(400).json({
-          message:
-            `Insufficient stock for ${product.name}`,
-        });
-      }
-
-      product.stock -= weight;
-
-      await product.save();
-
-      item.weight = weight;
-
-      item.quantity = weight;
     }
 
-    // ✅ CREATE ORDER
-    const newOrder = new Order({
-
-      items,
-
-      total,
-
+    const products = await Product.find({
+      _id: { $in: requestedItems.map((item) => item.productId) },
+    });
+    const pricedOrder = normalizeOrderItems(req.body.items, products);
+    const orderData = {
+      items: pricedOrder.items,
+      total: pricedOrder.total,
       userEmail,
-
+      checkoutRequestId,
       paymentMethod,
-
-      notifyAdmin:
-        notifyAdmin || false,
-
-      status: "Placed",
-
       paymentStatus: "pending",
+      paymentCurrency: "INR",
+      paymentAmount: 0,
+      stockReservationStatus: "committed",
+      reservationExpiresAt: null,
+      notifyAdmin: false,
+      status: "Placed",
+      vendorLocation: VENDOR_LOCATION,
+      customerLocation: location,
+    };
 
-      vendorLocation: {
-        lat: 17.385,
-        lng: 78.4867,
-      },
-
-      customerLocation: {
-        lat: customerLocation.lat,
-        lng: customerLocation.lng,
-      },
-    });
-
-    const savedOrder =
-      await newOrder.save();
-
-    res.status(201).json({
-
-      success: true,
-
-      order: savedOrder,
-    });
-
+    try {
+      const order = await createReservedOrder({ Order, Product, orderData });
+      return res.status(201).json({
+        success: true,
+        order,
+        pricing: {
+          subtotal: pricedOrder.subtotalPaise / 100,
+          discount: pricedOrder.discountPaise / 100,
+          gst: pricedOrder.gstPaise / 100,
+          total: pricedOrder.total,
+        },
+      });
+    } catch (error) {
+      if (error.code === 11000) {
+        const duplicateOrder = await Order.findOne({ userEmail, checkoutRequestId });
+        if (duplicateOrder) {
+          return respondWithExistingOrder(
+            res,
+            duplicateOrder,
+            paymentMethod,
+            requestedItems,
+            location
+          );
+        }
+      }
+      throw error;
+    }
   } catch (err) {
-
-    console.error(
-      "Order save error:",
-      err
-    );
-
-    res.status(500).json({
-      error: err.message,
-    });
+    if (err instanceof OrderValidationError) {
+      return res.status(err.statusCode).json({ success: false, message: err.message });
+    }
+    if (err.message === "Product not found") {
+      return res.status(404).json({ success: false, message: err.message });
+    }
+    if (err.message.includes("Insufficient stock")) {
+      return res.status(409).json({ success: false, message: err.message });
+    }
+    console.error("Order save error:", err);
+    return res.status(500).json({ success: false, message: "Unable to place order" });
   }
 });
 
 
 // ✅ GET ALL ORDERS
-router.get("/", async (req, res) => {
+router.get("/", verifyToken, isAdmin, async (req, res) => {
 
   try {
 
@@ -184,9 +196,15 @@ router.get("/", async (req, res) => {
 
 
 // ✅ GET PARTNER ORDERS
-router.get("/partner/:id", async (req, res) => {
+router.get("/partner/:id", verifyToken, isDelivery, async (req, res) => {
 
   try {
+    if (String(req.user.id) !== String(req.params.id)) {
+      return res.status(403).json({
+        success: false,
+        message: "Cannot access another delivery partner's orders",
+      });
+    }
 
     const orders =
       await Order.find({
@@ -220,9 +238,20 @@ router.get("/partner/:id", async (req, res) => {
 
 
 // ✅ GET CUSTOMER ORDERS BY EMAIL
-router.get("/user/:email", async (req, res) => {
+router.get("/user/:email", verifyToken, async (req, res) => {
   try {
     const email = req.params.email ? req.params.email.toLowerCase().trim() : "";
+    if (
+      req.user.role !== "admin" &&
+      (req.user.role !== "user" ||
+        req.user.email?.toLowerCase().trim() !== email)
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "Cannot access another customer's orders",
+      });
+    }
+
     const orders = await Order.find({ userEmail: email })
       .populate("items.productId")
       .populate("deliveryPartnerId", "email mobile liveLocation")
@@ -243,7 +272,7 @@ router.get("/user/:email", async (req, res) => {
 });
 
 // ✅ GET SINGLE ORDER DETAILS BY ID
-router.get("/:id", async (req, res) => {
+router.get("/:id", verifyToken, async (req, res) => {
   try {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
       return res.status(400).json({
@@ -264,6 +293,13 @@ router.get("/:id", async (req, res) => {
       });
     }
 
+    if (!canAccessOrder(req.user, order)) {
+      return res.status(403).json({
+        success: false,
+        message: "Cannot access this order",
+      });
+    }
+
     res.json({
       success: true,
       order,
@@ -278,7 +314,7 @@ router.get("/:id", async (req, res) => {
 });
 
 // ✅ ASSIGN DELIVERY
-router.put("/:id/assign", async (req, res) => {
+router.put("/:id/assign", verifyToken, isAdmin, async (req, res) => {
 
   try {
 
@@ -298,29 +334,37 @@ router.put("/:id/assign", async (req, res) => {
       });
     }
 
-    const order =
-      await Order.findByIdAndUpdate(
+    if (!mongoose.Types.ObjectId.isValid(partnerId)) {
+      return res.status(400).json({ message: "Invalid delivery partner ID" });
+    }
 
-        req.params.id,
+    const partner = await User.findOne({ _id: partnerId, role: "delivery" });
+    if (!partner) {
+      return res.status(404).json({ message: "Delivery partner not found" });
+    }
 
-        {
-          deliveryPartnerId:
-            partnerId,
-
-          status: "Assigned",
-
-          earning: earning || 0,
-        },
-
-        { new: true }
-      );
+    const order = await Order.findById(req.params.id);
 
     if (!order) {
-
       return res.status(404).json({
         message: "Order not found",
       });
     }
+
+    if (
+      order.status !== "Placed" ||
+      order.stockReservationStatus === "released" ||
+      (order.paymentMethod === "ONLINE" && order.paymentStatus !== "paid")
+    ) {
+      return res.status(409).json({
+        message: "Order is not ready for delivery assignment",
+      });
+    }
+
+    order.deliveryPartnerId = partnerId;
+    order.status = "Assigned";
+    order.earning = Number(earning) || 0;
+    await order.save();
 
     res.json({
       success: true,
@@ -342,27 +386,22 @@ router.put("/:id/assign", async (req, res) => {
 
 
 // ✅ UPDATE STATUS
-router.put("/:id/status", async (req, res) => {
+router.put("/:id/status", verifyToken, isDelivery, async (req, res) => {
 
   try {
 
     const { status } = req.body;
 
-    const validStatuses = [
-
-      "Placed",
-
-      "Assigned",
-
-      "Reached Vendor",
-
-      "Out for Delivery",
-
-      "Delivered",
-    ];
+    const nextStatus = {
+      Placed: "Assigned",
+      Assigned: "Reached Vendor",
+      "Reached Vendor": "Out for Delivery",
+      "Out for Delivery": "Delivered",
+      Delivered: "Delivered",
+    };
 
     if (
-      !validStatuses.includes(status)
+      !Object.prototype.hasOwnProperty.call(nextStatus, status)
     ) {
 
       return res.status(400).json({
@@ -380,6 +419,27 @@ router.put("/:id/status", async (req, res) => {
 
       return res.status(404).json({
         message: "Order not found",
+      });
+    }
+
+    if (String(order.deliveryPartnerId) !== String(req.user.id)) {
+      return res.status(403).json({
+        message: "Order is assigned to another delivery partner",
+      });
+    }
+
+    if (
+      order.stockReservationStatus === "released" ||
+      (order.paymentMethod === "ONLINE" && order.paymentStatus !== "paid")
+    ) {
+      return res.status(409).json({
+        message: "Order is not eligible for delivery status updates",
+      });
+    }
+
+    if (status !== order.status && status !== nextStatus[order.status]) {
+      return res.status(409).json({
+        message: "Invalid order status transition",
       });
     }
 
@@ -420,74 +480,34 @@ router.put("/:id/status", async (req, res) => {
 });
 
 
-// 🔥 VERIFY ROUTE
-router.put("/:id/verify", async (req, res) => {
-
-  try {
-
-    if (
-      !mongoose.Types.ObjectId.isValid(
-        req.params.id
-      )
-    ) {
-
-      return res.status(400).json({
-        message: "Invalid Order ID",
-      });
-    }
-
-    const order =
-      await Order.findById(
-        req.params.id
-      );
-
-    if (!order) {
-
-      return res.status(404).json({
-        message: "Order not found",
-      });
-    }
-
-    order.paymentStatus = "paid";
-
-    order.status = "Placed";
-
-    order.notifyAdmin = false;
-
-    await order.save();
-
-    res.json({
-      success: true,
-      order,
-    });
-
-  } catch (err) {
-
-    console.error(
-      "Verify error:",
-      err
-    );
-
-    res.status(500).json({
-      error: err.message,
-    });
-  }
-});
-
-
 // ✅ DISABLE POPUP
 router.put(
-  "/orders/:id/disable-notify",
+  "/:id/disable-notify",
+  verifyToken,
+  isAdmin,
   async (req, res) => {
 
     try {
 
-      await Order.findByIdAndUpdate(
+      if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid Order ID",
+        });
+      }
+
+      const order = await Order.findByIdAndUpdate(
         req.params.id,
         {
           notifyAdmin: false,
         }
       );
+      if (!order) {
+        return res.status(404).json({
+          success: false,
+          message: "Order not found",
+        });
+      }
 
       res.json({
         success: true,
@@ -504,7 +524,7 @@ router.put(
 
 
 // ✅ DOWNLOAD ORDER
-router.get("/:id/download", async (req, res) => {
+router.get("/:id/download", verifyToken, async (req, res) => {
 
   try {
 
@@ -532,6 +552,13 @@ router.get("/:id/download", async (req, res) => {
 
       return res.status(404).json({
         message: "Order not found",
+      });
+    }
+
+    if (!canAccessOrder(req.user, order)) {
+      return res.status(403).json({
+        success: false,
+        message: "Cannot access this order",
       });
     }
 
@@ -566,15 +593,41 @@ router.get("/:id/download", async (req, res) => {
 // ✅ SEND INVOICE EMAIL
 router.post(
   "/send-invoice",
+  verifyToken,
   async (req, res) => {
 
     try {
 
-      const {
-        email,
-        pdf,
-        orderId,
-      } = req.body;
+      const { pdf, orderId } = req.body;
+
+      if (!mongoose.Types.ObjectId.isValid(orderId)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid Order ID",
+        });
+      }
+
+      const order = await Order.findById(orderId).lean();
+      if (!order) {
+        return res.status(404).json({
+          success: false,
+          message: "Order not found",
+        });
+      }
+
+      if (!canEmailOrderInvoice(req.user, order)) {
+        return res.status(403).json({
+          success: false,
+          message: "Cannot email another customer's invoice",
+        });
+      }
+
+      if (typeof pdf !== "string" || !pdf) {
+        return res.status(400).json({
+          success: false,
+          message: "Invoice PDF is required",
+        });
+      }
 
       // ✅ MAIL TRANSPORT
       const transporter =
@@ -605,7 +658,7 @@ router.post(
         from:
           "YOUR_GMAIL@gmail.com",
 
-        to: email,
+        to: order.userEmail,
 
         subject:
           `Invoice for Order ${orderId}`,

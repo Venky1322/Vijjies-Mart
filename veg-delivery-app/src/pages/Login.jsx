@@ -3,8 +3,7 @@ import {
   useNavigate,
   Link,
 } from "react-router-dom";
-
-const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
+import { apiUrl } from "../config/api";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -22,13 +21,8 @@ const Login = () => {
     try {
       setLoading(true);
 
-      console.log(
-        "🔐 Sending login request:",
-        form
-      );
-
       const res = await fetch(
-        `${API}/auth/login`,
+        apiUrl("/auth/login"),
         {
           method: "POST",
           headers: {
@@ -114,7 +108,8 @@ const Login = () => {
         p-8
         rounded-3xl
         shadow-2xl
-        w-80
+        w-[calc(100%-2rem)]
+        max-w-sm
         border
         border-[#E5E7EB]
       "
@@ -131,11 +126,22 @@ const Login = () => {
           🔐 Login
         </h2>
 
-        {/* ✅ EMAIL OR MOBILE */}
-        <input
-          placeholder="Email or Mobile Number"
-          value={form.login}
-          className="
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            void handleLogin();
+          }}
+        >
+          <label htmlFor="login-identifier" className="sr-only">
+            Email or mobile number
+          </label>
+          <input
+            id="login-identifier"
+            autoComplete="username"
+            required
+            placeholder="Email or Mobile Number"
+            value={form.login}
+            className="
           bg-white
           text-[#1F2937]
           placeholder-gray-500
@@ -149,20 +155,25 @@ const Login = () => {
           focus:ring-2
           focus:ring-green-400
         "
-          onChange={(e) =>
-            setForm({
-              ...form,
-              login: e.target.value,
-            })
-          }
-        />
+            onChange={(e) =>
+              setForm({
+                ...form,
+                login: e.target.value,
+              })
+            }
+          />
 
-        {/* ✅ PASSWORD */}
-        <input
-          placeholder="Password"
-          type="password"
-          value={form.password}
-          className="
+          <label htmlFor="login-password" className="sr-only">
+            Password
+          </label>
+          <input
+            id="login-password"
+            autoComplete="current-password"
+            required
+            placeholder="Password"
+            type="password"
+            value={form.password}
+            className="
           bg-white
           text-[#1F2937]
           placeholder-gray-500
@@ -176,20 +187,19 @@ const Login = () => {
           focus:ring-2
           focus:ring-green-400
         "
-          onChange={(e) =>
-            setForm({
-              ...form,
-              password:
-                e.target.value,
-            })
-          }
-        />
+            onChange={(e) =>
+              setForm({
+                ...form,
+                password:
+                  e.target.value,
+              })
+            }
+          />
 
-        {/* ✅ LOGIN BUTTON */}
-        <button
-          onClick={handleLogin}
-          disabled={loading}
-          className="
+          <button
+            type="submit"
+            disabled={loading}
+            className="
           w-full
           py-3
           rounded-xl
@@ -202,11 +212,12 @@ const Login = () => {
           duration-300
           shadow-lg
         "
-        >
-          {loading
-            ? "Processing..."
-            : "Login"}
-        </button>
+          >
+            {loading
+              ? "Processing..."
+              : "Login"}
+          </button>
+        </form>
 
         {/* ✅ REGISTER */}
         <p

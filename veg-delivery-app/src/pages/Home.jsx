@@ -1,11 +1,12 @@
 import { useEffect, useState, useContext } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { ShoppingCart, Search, X, SlidersHorizontal, ArrowUpDown } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 
 import VegetableCard from "../components/VegetableCard";
 import VoiceShoppingAssistant from "../components/VoiceShoppingAssistant";
 import { CartContext } from "../context/CartContext";
+import { apiUrl } from "../config/api";
 
 const MotionImage = motion.img;
 
@@ -23,7 +24,6 @@ export default function Home() {
   const [vegetables, setVegetables] = useState([]);
   const [loadingVegetables, setLoadingVegetables] = useState(true);
   const [productLoadError, setProductLoadError] = useState(false);
-  const [showVeggies, setShowVeggies] = useState(true);
   const [index, setIndex] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
@@ -49,15 +49,20 @@ export default function Home() {
       setLoadingVegetables(true);
       setProductLoadError(false);
       const res = await fetch(
-        `${import.meta.env.VITE_API_URL}/products`
+        apiUrl("/products")
       );
       if (!res.ok) {
         throw new Error(`Product request failed with status ${res.status}.`);
       }
       const data = await res.json();
-      setVegetables(data.products || data || []);
+      const products = Array.isArray(data) ? data : data?.products;
+      if (!Array.isArray(products)) {
+        throw new Error("The product service returned an invalid response.");
+      }
+      setVegetables(products);
     } catch (err) {
       console.error("Fetch products error:", err);
+      setVegetables([]);
       setProductLoadError(true);
     } finally {
       setLoadingVegetables(false);
@@ -70,12 +75,6 @@ export default function Home() {
   } catch (error) {
     console.error("Unable to read signed-in customer:", error);
   }
-  const showVoiceAssistant =
-    Boolean(localStorage.getItem("token")) &&
-    Boolean(customerUser) &&
-    customerUser.role !== "admin";
-
-
   // ======================================
   // 🤖 GENERATE AI RECIPE
   // ======================================
@@ -94,7 +93,7 @@ export default function Home() {
         );
 
       const res = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/recipes/generate`,
+        apiUrl("/api/recipes/generate"),
         {
           method: "POST",
 
@@ -165,44 +164,73 @@ export default function Home() {
   });
 
   return (
-    <div className="min-h-screen bg-[#F7F8F5] text-[#1F2937] pb-20">
+    <div className="vm-home min-h-screen bg-[#F7F8F5] text-[#1F2937] pb-20">
 
+      <div className="vm-home-persistent-controls">
+        <VoiceShoppingAssistant
+          products={vegetables}
+          productLoadError={productLoadError}
+          user={customerUser}
+        />
+
+        <div className="vm-shop-banner max-w-6xl mx-auto px-4">
+          <div className="bg-white border border-[#E5E7EB] rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-lg">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-green-500/20 flex items-center justify-center text-2xl">🛒</div>
+              <div>
+                <h3 className="font-bold text-lg">Start Your Fresh Order</h3>
+                <p className="text-sm text-gray-500">Prices shown per kilogram • Minimum order ₹100</p>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <a
+                href="#products-section"
+                className="px-6 py-3 text-sm font-bold rounded-xl bg-gradient-to-r from-green-400 to-emerald-500 hover:scale-105 transition-all shadow-lg shadow-green-500/30"
+              >
+                🥦 Shop Now
+              </a>
+              <a
+                href="#ai-recipe"
+                className="px-6 py-3 text-sm font-bold rounded-xl bg-[#F1F8F3] border border-[#E5E7EB] hover:bg-[#EAF6EC] transition-all"
+              >
+                🍛 Get Recipe
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <main className="vm-home-scroll-content">
       {/* ============================================ */}
       {/* 🌿 HERO SECTION */}
       {/* ============================================ */}
-      <div className="relative mx-3 mt-4 h-[54vh] min-h-[360px] max-h-[620px] overflow-hidden rounded-[1.75rem] border border-white bg-[#F1F8F3] shadow-[0_20px_60px_rgba(22,101,52,0.16)] sm:mx-5 sm:h-[66vh] md:mx-auto md:mt-6 md:h-[72vh] md:max-h-[760px] md:max-w-[1400px] md:rounded-[2rem]">
+      <div className="vm-home-hero relative mx-3 mt-4 h-[54vh] min-h-[360px] max-h-[620px] overflow-hidden rounded-[1.75rem] border border-white bg-[#F1F8F3] shadow-[0_20px_60px_rgba(22,101,52,0.16)] sm:mx-5 sm:h-[66vh] md:mx-auto md:mt-6 md:h-[72vh] md:max-h-[760px] md:max-w-[1400px] md:rounded-[2rem]">
 
         <AnimatePresence mode="sync">
           <MotionImage
             key={index}
             src={images[index]}
             alt="Fresh vegetables"
-            initial={{ opacity: 0, scale: 1.04 }}
-            animate={{ opacity: 1, scale: 1.02 }}
-            exit={{ opacity: 0, scale: 1.01 }}
+            initial={{ opacity: 0, scale: 1 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 1 }}
             transition={{ duration: 0.85, ease: "easeInOut" }}
             className="absolute inset-0 h-full w-full object-cover"
           />
         </AnimatePresence>
 
-        <div className="absolute inset-0 bg-gradient-to-b from-white/45 via-white/15 to-[#F1F8F3]/70" />
-
         {/* Hero content */}
-        <div className="absolute inset-0 flex flex-col justify-center items-center text-center px-4">
+        <div className="vm-home-hero-content absolute inset-0 flex flex-col justify-center items-center text-center px-4">
 
           {/* Brand pill */}
           <div className="mb-4 inline-flex items-center gap-2 bg-white border border-[#E5E7EB] px-5 py-2 rounded-full text-green-700 text-sm font-semibold tracking-wide">
             <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse inline-block" />
-            🌿 VIJJIESMART — Farm Fresh, Delivered Fast
+            🌿 VIJJIESMART — Grocery shopping made simple
           </div>
 
           <h1
             className="text-4xl sm:text-5xl md:text-7xl font-extrabold leading-[0.98] tracking-[-0.035em]"
-            style={{
-              WebkitTextStroke: "1.5px #000",
-              textShadow:
-                "2px 2px 0 #000, 4px 4px 6px rgba(0, 0, 0, 0.75), 6px 6px 12px rgba(0, 0, 0, 0.55), 0 8px 18px rgba(0, 0, 0, 0.45)",
-            }}
           >
             <span className="text-[#22C55E]">Fresh Veggies</span><br />
             <span className="text-[#FACC15]">
@@ -211,7 +239,7 @@ export default function Home() {
           </h1>
 
           <p className="mt-4 max-w-xl text-sm font-semibold leading-relaxed text-[#FEFCE8] drop-shadow-[0_1px_5px_rgba(0,0,0,0.75)] sm:text-base md:text-xl">
-            Order farm-fresh vegetables online. Fast delivery. No minimum. 100% fresh guaranteed.
+            Browse vegetables and build your order online.
           </p>
 
           {/* Search bar in hero */}
@@ -243,7 +271,7 @@ export default function Home() {
 
           {/* Delivery badges */}
           <div className="mt-5 flex flex-wrap gap-3 justify-center text-sm">
-            {["🚀 Fast Delivery", "💚 100% Fresh", "✅ Verified Vendor", "🆓 Free Delivery Above ₹300"].map((badge) => (
+            {["Shop vegetables for your kitchen", "Free delivery on all orders"].map((badge) => (
               <span key={badge} className="bg-white border border-[#E5E7EB] px-4 py-1.5 rounded-full text-gray-600">
                 {badge}
               </span>
@@ -257,53 +285,16 @@ export default function Home() {
       {/* ============================================ */}
       {/* 🎁 OFFER STRIP */}
       {/* ============================================ */}
-      <div className="bg-[#EAF6EC] py-3 px-4 overflow-hidden">
-        <div className="flex gap-10 animate-marquee whitespace-nowrap">
+      <div className="bg-[#EAF6EC] py-3 px-4">
+        <div className="flex flex-wrap justify-center gap-x-10 gap-y-2">
           {[
-            "🎉 Free delivery on all orders!",
-            "💰 10% discount on orders above ₹300",
-            "🥦 Fresh vegetables sourced daily",
-            "⚡ Lightning-fast delivery to your doorstep",
-            "🌱 Farm to table — always fresh",
-            "🎉 Free delivery on all orders!",
-          ].map((msg, i) => (
-            <span key={i} className="text-green-800 font-semibold text-sm mx-6">
+            "Free delivery on all orders",
+            "10% discount on orders of ₹300 or more",
+          ].map((msg) => (
+            <span key={msg} className="text-green-800 font-semibold text-sm">
               {msg}
             </span>
           ))}
-        </div>
-      </div>
-
-
-      {/* ============================================ */}
-      {/* 📦 ORDER-NOW FLOATING BANNER */}
-      {/* ============================================ */}
-      <div className="max-w-6xl mx-auto mt-[-28px] px-4 z-10 relative">
-        <div className="bg-white border border-[#E5E7EB] rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-lg">
-
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-green-500/20 flex items-center justify-center text-2xl">🛒</div>
-            <div>
-              <h3 className="font-bold text-lg">Start Your Fresh Order</h3>
-              <p className="text-sm text-gray-500">Prices start from ₹20/kg • Minimum order ₹100</p>
-            </div>
-          </div>
-
-          <div className="flex gap-3">
-            <a
-              href="#products-section"
-              className="px-6 py-3 text-sm font-bold rounded-xl bg-gradient-to-r from-green-400 to-emerald-500 hover:scale-105 transition-all shadow-lg shadow-green-500/30"
-            >
-              🥦 Shop Now
-            </a>
-            <a
-              href="#ai-recipe"
-              className="px-6 py-3 text-sm font-bold rounded-xl bg-[#F1F8F3] border border-[#E5E7EB] hover:bg-[#EAF6EC] transition-all"
-            >
-              🍛 Get Recipe
-            </a>
-          </div>
-
         </div>
       </div>
 
@@ -319,7 +310,7 @@ export default function Home() {
               🛍️ Fresh Vegetables
             </h2>
             <p className="text-gray-500 text-sm mt-1">
-              {sortedVegetables.length} products available · Prices in ₹/kg
+              {vegetables.length} products available · Prices in ₹/kg
             </p>
           </div>
 
@@ -403,6 +394,26 @@ export default function Home() {
               </div>
             ))}
           </div>
+        ) : productLoadError ? (
+          <div
+            role="alert"
+            className="text-center py-16 bg-white rounded-3xl border border-red-200 p-8"
+          >
+            <h3 className="text-xl font-semibold text-gray-800">
+              Products are temporarily unavailable
+            </h3>
+            <p className="text-gray-600 mt-2 text-sm">
+              We couldn&apos;t load the catalog. Please check your connection and try again.
+            </p>
+            <button
+              type="button"
+              onClick={fetchProducts}
+              disabled={loadingVegetables}
+              className="mt-4 px-6 py-2.5 rounded-xl bg-green-700 hover:bg-green-800 text-white text-sm font-semibold transition disabled:opacity-60"
+            >
+              {loadingVegetables ? "Retrying..." : "Try again"}
+            </button>
+          </div>
         ) : sortedVegetables.length === 0 ? (
           <div className="text-center py-20 bg-white rounded-3xl border border-[#E5E7EB] p-8">
             <div className="text-6xl mb-4">🥦</div>
@@ -437,7 +448,7 @@ export default function Home() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
           {[
             { icon: "🚀", title: "Fast Delivery", desc: "Delivered in under 60 minutes" },
-            { icon: "🌱", title: "Farm Fresh", desc: "Direct from local farmers" },
+            { icon: "🌱", title: "Farm Fresh", desc: "Direct from local Vendors" },
             { icon: "💰", title: "Best Prices", desc: "No hidden charges ever" },
             { icon: "📍", title: "Live Tracking", desc: "Track your order in real time" },
           ].map((item) => (
@@ -605,9 +616,15 @@ export default function Home() {
       {/* 🦶 FOOTER */}
       {/* ============================================ */}
       <footer className="bg-[#166534] border-t border-green-800 py-8 text-center text-[#DCFCE7] text-sm">
-        <p>🌿 VIJJIESMART — Fresh Vegetables Delivered Fast</p>
-        <p className="mt-1">Made with ❤️ for healthy living</p>
+        <p>🌿 VIJJIESMART — Shop vegetables online</p>
+        <Link
+          to="/contact"
+          className="mt-2 inline-flex min-h-11 items-center rounded-lg px-3 text-white underline underline-offset-4 hover:text-emerald-100"
+        >
+          Contact us
+        </Link>
       </footer>
+      </main>
 
       {/* ============================================ */}
       {/* 🛒 FLOATING BOTTOM CART BAR (SWIGGY/ZEPTO STYLE) */}
@@ -617,7 +634,7 @@ export default function Home() {
           initial={{ y: 80, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 80, opacity: 0 }}
-          className="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 w-[92%] max-w-lg bg-emerald-600/95 backdrop-blur-xl text-white p-3.5 rounded-2xl shadow-2xl flex items-center justify-between border border-emerald-400/50"
+          className="vm-home-cart-bar fixed bottom-5 left-1/2 -translate-x-1/2 z-50 w-[92%] max-w-lg bg-emerald-600/95 backdrop-blur-xl text-white p-3.5 rounded-2xl shadow-2xl flex items-center justify-between border border-emerald-400/50"
         >
           <div className="flex items-center gap-3">
             <div className="bg-white/20 p-2.5 rounded-xl">
@@ -639,14 +656,6 @@ export default function Home() {
             View Cart →
           </button>
         </motion.div>
-      )}
-
-      {showVoiceAssistant && (
-        <VoiceShoppingAssistant
-          products={vegetables}
-          productLoadError={productLoadError}
-          user={customerUser}
-        />
       )}
 
     </div>

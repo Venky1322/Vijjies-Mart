@@ -1,0 +1,12 @@
+services:
+  mongo:
+    # Provisional pinned baseline; review image patch/security policy before use.
+    image: mongo:7.0.0
+    container_name: vijjies-mart-test-mongo
+    hostname: vijjies-mart-test-mongo
+    command: ["mongod", "--replSet", "vj-test-rs", "--bind_ip_all"]
+    ports:
+      - "127.0.0.1:27017:27017"
+    labels:
+      org.vijjies-mart.test-environment: "true"
+    restart: "no"

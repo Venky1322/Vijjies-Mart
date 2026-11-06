@@ -5,15 +5,15 @@
   --accent-bg: #eaf6ec;
   --border: #e5e7eb;
   --text: #1f2937;
-  --bg-dark: #f7f8f5;
+  --bg-dark: #d6d6d2;
   --card-bg: #ffffff;
   --shadow: 0 8px 24px rgba(31, 41, 55, 0.08);
 }
 
 body {
-  background: #f7f8f5;
+  background: #d6d6d2;
   color: var(--text);
-  font-family: 'Poppins', sans-serif;
+  font-family: "Lucida Console", "Courier New", monospace;
   min-height: 100vh;
 }
 

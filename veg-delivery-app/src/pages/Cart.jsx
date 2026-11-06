@@ -3,6 +3,7 @@ import { CartContext } from "../context/CartContext";
 import { useNavigate } from "react-router-dom";
 import { Minus, Plus, Trash2, ShoppingBag, CreditCard, ArrowLeft, Tag, ShieldCheck, AlertCircle } from "lucide-react";
 import { motion } from "framer-motion";
+import { calculateCartPricing } from "../utils/money";
 
 const Cart = () => {
   const navigate = useNavigate();
@@ -21,16 +22,13 @@ const Cart = () => {
     [cart]
   );
 
-  // Business rules: Minimum order ₹100, 10% discount above ₹300
-  const discount = useMemo(() => {
-    return totalPrice >= 300 ? Number((totalPrice * 0.10).toFixed(2)) : 0;
-  }, [totalPrice]);
+  // Business rules mirror backend pricing: ₹100 minimum and 10% off at ₹300+.
+  const pricing = useMemo(() => calculateCartPricing(totalPrice), [totalPrice]);
+  const discount = pricing.discount;
 
   const meetsMinimum = totalPrice >= 100;
   const amountToMinimum = Math.max(0, 100 - totalPrice);
   const amountToDiscount = Math.max(0, 300 - totalPrice);
-
-  const discountedTotal = Number((totalPrice - discount).toFixed(2));
 
   return (
     <div className="min-h-screen bg-[#F7F8F5] text-[#1F2937] px-4 py-8 md:px-8">
@@ -59,8 +57,8 @@ const Cart = () => {
               ₹
             </div>
             <div>
-              <p className="text-xs text-gray-500">Cart Total</p>
-              <p className="text-2xl font-extrabold text-green-700">₹{totalPrice.toFixed(2)}</p>
+              <p className="text-xs text-gray-500">Estimated total incl. GST</p>
+              <p className="text-2xl font-extrabold text-green-700">₹{pricing.total.toFixed(2)}</p>
             </div>
           </div>
         </div>
@@ -77,7 +75,7 @@ const Cart = () => {
             </div>
             <h2 className="text-2xl font-bold text-[#1F2937]">Your cart is empty</h2>
             <p className="mt-2 text-sm text-gray-600">
-              Fresh, farm-harvested vegetables are waiting for you.
+              Browse the catalog and add items to get started.
             </p>
             <button
               onClick={() => navigate("/")}
@@ -104,7 +102,7 @@ const Cart = () => {
                 <div className="bg-[#F1F8F3] border border-green-200 rounded-2xl p-4 flex items-center gap-3 text-green-900 text-sm">
                   <Tag size={20} className="shrink-0 text-green-700" />
                   <span>
-                    Add <strong>₹{amountToDiscount.toFixed(2)}</strong> more to unlock an instant <strong>10% OFF discount</strong>!
+                    Add <strong>₹{amountToDiscount.toFixed(2)}</strong> more to unlock an instant <strong>10% OFF discount</strong> on orders of ₹300 or more.
                   </span>
                 </div>
               ) : (
@@ -121,7 +119,7 @@ const Cart = () => {
 
                 return (
                   <div
-                    key={item.id}
+                    key={`${String(item.productId ?? item.id)}:${item.voiceWeightBased ? "voice" : weight}`}
                     className="rounded-2xl border border-[#E5E7EB] bg-white p-5 shadow-sm flex flex-col gap-3"
                   >
                     <div className="flex items-center justify-between gap-4">
@@ -150,7 +148,7 @@ const Cart = () => {
                       </div>
 
                       <button
-                        onClick={() => removeFromCart(item.id)}
+                        onClick={() => removeFromCart(item.id, item.weight, item.voiceWeightBased)}
                         className="rounded-xl border border-red-500/30 bg-red-500/10 p-2.5 text-red-400 transition hover:bg-red-500 hover:text-white cursor-pointer"
                         title="Remove Item"
                       >
@@ -162,7 +160,7 @@ const Cart = () => {
                       {/* Quantity Controls */}
                       <div className="flex items-center gap-3 rounded-xl border border-[#E5E7EB] px-3 py-1.5 bg-[#F7F8F5]">
                         <button
-                          onClick={() => decreaseQty(item.id)}
+                          onClick={() => decreaseQty(item.id, item.weight, item.voiceWeightBased)}
                           className="text-gray-600 hover:text-gray-900 transition cursor-pointer p-0.5"
                           title="Decrease"
                         >
@@ -174,7 +172,7 @@ const Cart = () => {
                             : item.quantity}
                         </span>
                         <button
-                          onClick={() => increaseQty(item.id)}
+                          onClick={() => increaseQty(item.id, item.weight, item.voiceWeightBased)}
                           className="text-gray-600 hover:text-gray-900 transition cursor-pointer p-0.5"
                           title="Increase"
                         >
@@ -214,10 +212,15 @@ const Cart = () => {
 
                 {discount > 0 && (
                   <div className="flex justify-between text-green-700 font-semibold">
-                    <span>10% Discount (&gt;₹300)</span>
+                    <span>10% Discount (₹300+)</span>
                     <span>-₹{discount.toFixed(2)}</span>
                   </div>
                 )}
+
+                <div className="flex justify-between text-gray-600">
+                  <span>GST (5%)</span>
+                  <span className="font-semibold text-[#1F2937]">₹{pricing.gst.toFixed(2)}</span>
+                </div>
 
                 <div className="flex justify-between text-gray-600">
                   <span>Delivery Fee</span>
@@ -226,14 +229,14 @@ const Cart = () => {
 
                 <div className="flex justify-between border-t border-[#E5E7EB] pt-3 text-lg font-extrabold text-[#1F2937]">
                   <span>Order Total</span>
-                  <span className="text-green-700 text-2xl">₹{discountedTotal.toFixed(2)}</span>
+                  <span className="text-green-700 text-2xl">₹{pricing.total.toFixed(2)}</span>
                 </div>
               </div>
 
               {/* Secure badge */}
               <div className="mt-5 flex items-center justify-center gap-2 text-xs text-gray-500">
                 <ShieldCheck size={16} className="text-green-700" />
-                <span>100% Fresh & Contactless Delivery</span>
+                <span>GST and delivery charges are shown before checkout.</span>
               </div>
 
               {/* Proceed to Checkout / Payment */}

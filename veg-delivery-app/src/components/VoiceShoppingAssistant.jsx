@@ -1,10 +1,14 @@
-import { useContext, useEffect, useRef, useState } from "react";
+import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { Mic, MicOff, ShoppingCart, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { CartContext } from "../context/CartContext";
-import { parseVoiceOrder } from "../utils/voiceOrderParser";
+import {
+  hasDozenQuantityRequest,
+  parseVoiceOrder,
+} from "../utils/voiceOrderParser";
 import {
   getVoiceCopy,
+  getVoiceProductName,
   hasVoiceIntent,
   VOICE_LANGUAGES,
 } from "../utils/voiceAssistantLanguage";
@@ -12,6 +16,7 @@ import {
   calculateProspectiveCartTotal,
   MINIMUM_ORDER_VALUE,
 } from "../utils/voiceOrderTotal";
+import { withStockAlternative } from "../utils/voiceStockAlternative";
 
 const VoiceShoppingAssistant = ({
   products = [],
@@ -34,7 +39,7 @@ const VoiceShoppingAssistant = ({
       return "en-IN";
     }
   });
-  const copy = getVoiceCopy(language);
+  const copy = useMemo(() => getVoiceCopy(language), [language]);
   const displayName =
     user?.displayName || user?.name || user?.given_name || "";
   const [availableVoices, setAvailableVoices] = useState(() =>
@@ -51,6 +56,7 @@ const VoiceShoppingAssistant = ({
     },
   ]);
   const [pendingItems, setPendingItems] = useState([]);
+  const [stockAlternatives, setStockAlternatives] = useState({});
 
   useEffect(() => {
     const speechSynthesis = window.speechSynthesis;
@@ -135,35 +141,21 @@ const VoiceShoppingAssistant = ({
 
   const cancelPendingOrder = () => {
     setPendingItems([]);
+    setStockAlternatives({});
     setStage("idle");
     addMessage("assistant", copy.cancelled);
   };
 
-  const cancelPendingItem = (productId) => {
-    const remainingItems = pendingItems.filter(
-      (item) => item.product._id !== productId
-    );
-    setPendingItems(remainingItems);
-    if (remainingItems.length === 0) {
-      setStage("idle");
-      addMessage("assistant", copy.itemRemovedLast);
-    }
-  };
-
-  const confirmCartAddition = () => {
+  const addItemsToCart = (items) => {
     if (
       isAddingToCart ||
-      pendingItems.length === 0 ||
-      pendingItems.some((item) => item.requiresStockApproval && !item.stockApproved)
+      items.length === 0 ||
+      isAddingToCartRef.current
     ) {
       return;
     }
 
-    if (isAddingToCartRef.current) {
-      return;
-    }
-
-    const prospectiveTotal = calculateProspectiveCartTotal(cart, pendingItems);
+    const prospectiveTotal = calculateProspectiveCartTotal(cart, items);
     if (prospectiveTotal < MINIMUM_ORDER_VALUE) {
       setPendingItems([]);
       setStage("idle");
@@ -181,7 +173,7 @@ const VoiceShoppingAssistant = ({
     setIsAddingToCart(true);
     try {
       addVoiceOrderItems(
-        pendingItems.map(({ product, quantity }) => ({ product, quantity }))
+        items.map(({ product, quantity }) => ({ product, quantity }))
       );
       setPendingItems([]);
       setStage("after-add");
@@ -201,6 +193,71 @@ const VoiceShoppingAssistant = ({
     }
   };
 
+  const confirmAvailableStock = () => {
+    const approvedItems = pendingItems.map((item) =>
+      item.requiresStockApproval
+        ? {
+            ...item,
+            quantity: item.availableQuantity,
+            stockApproved: true,
+          }
+        : item
+    );
+    addItemsToCart(approvedItems);
+  };
+
+  const applyStockAlternative = (productId, rawQuantity) => {
+    const updatedItems = withStockAlternative(
+      pendingItems,
+      productId,
+      rawQuantity
+    );
+    if (!updatedItems) {
+      addMessage("assistant", copy.stockReviewAgain);
+      return;
+    }
+
+    const remainingItems = updatedItems.filter(
+      (pendingItem) => pendingItem.requiresStockApproval
+    );
+    setPendingItems(updatedItems);
+    setStockAlternatives((current) => ({ ...current, [productId]: "" }));
+
+    if (remainingItems.length > 0) {
+      setStage("stock-confirmation");
+      addMessage(
+        "assistant",
+        copy.stockApproval(
+          remainingItems.map((pendingItem) => ({
+            productName: getVoiceProductName(pendingItem.product.name, language),
+            requestedQuantity: pendingItem.requestedQuantity,
+            availableQuantity: pendingItem.availableQuantity,
+          }))
+        )
+      );
+      return;
+    }
+
+    setStage("cart-review");
+    const total = calculateProspectiveCartTotal(cart, updatedItems);
+    const itemNames = updatedItems
+      .map(({ product, quantity }) => `${product.name}, ${quantity} kg`)
+      .join(" and ");
+    addMessage("assistant", copy.review(itemNames, total.toFixed(2)));
+  };
+
+  const confirmCartAddition = () => {
+    if (
+      pendingItems.some(
+        (item) => item.requiresStockApproval && !item.stockApproved
+      )
+    ) {
+      return;
+    }
+
+    addItemsToCart(pendingItems);
+  };
+
   const proceedToCheckout = () => {
     setIsOpen(false);
     navigate("/payment");
@@ -210,22 +267,38 @@ const VoiceShoppingAssistant = ({
     const cleanText = spokenText.trim();
     addMessage("user", cleanText);
 
+    if (stage === "stock-confirmation") {
+      if (hasVoiceIntent(cleanText, language, "cancel")) {
+        cancelPendingOrder();
+      } else {
+        const requestedAlternative = parseVoiceOrder(cleanText, products).find(
+          (requestedItem) =>
+            pendingItems.some(
+              (pendingItem) =>
+                pendingItem.requiresStockApproval &&
+                String(pendingItem.product._id) ===
+                  String(requestedItem.product?._id)
+            )
+        );
+        if (requestedAlternative) {
+          applyStockAlternative(
+            requestedAlternative.product._id,
+            requestedAlternative.quantity
+          );
+        } else if (hasVoiceIntent(cleanText, language, "confirm")) {
+          confirmAvailableStock();
+        } else {
+          addMessage("assistant", copy.stockReviewAgain);
+        }
+      }
+      return;
+    }
+
     if (stage === "cart-review") {
       if (hasVoiceIntent(cleanText, language, "cancel")) {
         cancelPendingOrder();
       } else if (hasVoiceIntent(cleanText, language, "confirm")) {
-        if (
-          pendingItems.some(
-            (item) => item.requiresStockApproval && !item.stockApproved
-          )
-        ) {
-          addMessage(
-            "assistant",
-            copy.approvalNeeded
-          );
-        } else {
-          confirmCartAddition();
-        }
+        confirmCartAddition();
       } else {
         addMessage(
           "assistant",
@@ -254,6 +327,14 @@ const VoiceShoppingAssistant = ({
       addMessage(
         "assistant",
         copy.unavailableError
+      );
+      return;
+    }
+
+    if (hasDozenQuantityRequest(cleanText)) {
+      addMessage(
+        "assistant",
+        copy.specifyWeight || getVoiceCopy("en-IN").specifyWeight
       );
       return;
     }
@@ -316,7 +397,7 @@ const VoiceShoppingAssistant = ({
       const requiresStockApproval = requestedItem.quantity > availableStock;
       eligibleItems.push({
         product,
-        quantity: requiresStockApproval ? availableStock : requestedItem.quantity,
+        quantity: requestedItem.quantity,
         availableQuantity: availableStock,
         requestedQuantity: requestedItem.quantity,
         requiresStockApproval,
@@ -349,6 +430,26 @@ const VoiceShoppingAssistant = ({
       );
     }
     if (eligibleItems.length === 0) {
+      return;
+    }
+
+    const itemsRequiringApproval = eligibleItems.filter(
+      (item) => item.requiresStockApproval
+    );
+    if (itemsRequiringApproval.length > 0) {
+      setPendingItems(eligibleItems);
+      setStockAlternatives({});
+      setStage("stock-confirmation");
+      addMessage(
+        "assistant",
+        copy.stockApproval(
+          itemsRequiringApproval.map((item) => ({
+            productName: getVoiceProductName(item.product.name, language),
+            requestedQuantity: item.requestedQuantity,
+            availableQuantity: item.availableQuantity,
+          }))
+        )
+      );
       return;
     }
 
@@ -396,7 +497,6 @@ const VoiceShoppingAssistant = ({
 
       recognition.onstart = () => {
         setIsListening(true);
-        setStage("listening");
       };
       recognition.onresult = (event) => {
         const result = event.results?.[0]?.[0]?.transcript;
@@ -423,9 +523,6 @@ const VoiceShoppingAssistant = ({
       };
       recognition.onend = () => {
         setIsListening(false);
-        setStage((currentStage) =>
-          currentStage === "listening" ? "idle" : currentStage
-        );
       };
       recognition.start();
     } catch (error) {
@@ -446,11 +543,11 @@ const VoiceShoppingAssistant = ({
     );
 
   return (
-    <>
+    <div className="vm-voice-assistant mx-auto flex w-full max-w-md flex-col items-center gap-3 px-4 py-4">
       {isOpen && (
         <section
           aria-label="VIJJIESMART voice shopping assistant"
-          className="fixed bottom-24 right-4 z-50 flex max-h-[75vh] w-[calc(100vw-2rem)] max-w-sm flex-col overflow-hidden rounded-2xl border border-[#E5E7EB] bg-white shadow-2xl sm:right-6"
+          className="vm-voice-panel flex w-full max-w-sm flex-col overflow-hidden rounded-2xl border border-[#E5E7EB] bg-white shadow-2xl"
         >
           <header className="flex items-center justify-between bg-[#F1F8F3] px-4 py-3">
             <div>
@@ -528,42 +625,6 @@ const VoiceShoppingAssistant = ({
                           ).toFixed(2)}
                         </span>
                       </div>
-                      {item.requiresStockApproval && !item.stockApproved && (
-                        <div className="mt-2 rounded-lg bg-amber-50 p-2 text-amber-900">
-                          {copy.onlyAvailable(item.availableQuantity, item.product.name)}
-                          <div className="mt-2 flex gap-2">
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setPendingItems((currentItems) =>
-                                  currentItems.map((currentItem) =>
-                                    currentItem.product._id === item.product._id
-                                      ? { ...currentItem, stockApproved: true }
-                                      : currentItem
-                                  )
-                                )
-                              }
-                              className="rounded-lg bg-green-600 px-2 py-1 text-white"
-                            >
-                              {copy.addAvailable(item.availableQuantity)}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                cancelPendingItem(item.product._id)
-                              }
-                              className="rounded-lg border border-[#E5E7EB] px-2 py-1"
-                            >
-                              {copy.cancelItem}
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                      {item.requiresStockApproval && item.stockApproved && (
-                        <p className="mt-1 text-xs text-green-700">
-                          {copy.availableAccepted}
-                        </p>
-                      )}
                     </li>
                   ))}
                 </ul>
@@ -595,6 +656,80 @@ const VoiceShoppingAssistant = ({
                     </div>
                   </>
                 )}
+              </div>
+            )}
+
+            {pendingItems.length > 0 && stage === "stock-confirmation" && (
+              <div className="space-y-3 rounded-xl border border-amber-200 bg-amber-50 p-3">
+                <h3 className="font-semibold text-gray-900">{copy.order}</h3>
+                <ul className="space-y-3 text-sm">
+                  {pendingItems.map((item) => (
+                    <li key={item.product._id} className="space-y-2 border-b border-amber-200 pb-3 last:border-0 last:pb-0">
+                      <p className="font-medium text-gray-800">
+                        {item.product.name}:{" "}
+                        {copy.stockQuantityDetails(
+                          item.requestedQuantity,
+                          item.availableQuantity
+                        )}
+                      </p>
+                      {item.requiresStockApproval && (
+                        <div className="flex gap-2">
+                          <label className="sr-only" htmlFor={`stock-quantity-${item.product._id}`}>
+                            {copy.addAvailable(stockAlternatives[item.product._id] || "")}
+                          </label>
+                          <input
+                            id={`stock-quantity-${item.product._id}`}
+                            type="number"
+                            min="0.25"
+                            max={item.availableQuantity}
+                            step="0.25"
+                            inputMode="decimal"
+                            value={stockAlternatives[item.product._id] || ""}
+                            onChange={(event) =>
+                              setStockAlternatives((current) => ({
+                                ...current,
+                                [item.product._id]: event.target.value,
+                              }))
+                            }
+                            placeholder="kg"
+                            className="min-w-0 flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900"
+                          />
+                          <button
+                            type="button"
+                            onClick={() =>
+                              applyStockAlternative(
+                                item.product._id,
+                                stockAlternatives[item.product._id]
+                              )
+                            }
+                            disabled={isAddingToCart}
+                            className="rounded-lg bg-emerald-700 px-3 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            {copy.addAvailable(stockAlternatives[item.product._id] || "")}
+                          </button>
+                        </div>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={confirmAvailableStock}
+                    disabled={isAddingToCart}
+                    className="flex-1 rounded-lg bg-green-600 px-3 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {isAddingToCart ? copy.adding : copy.stockConfirmButton}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={cancelPendingOrder}
+                    disabled={isAddingToCart}
+                    className="rounded-lg border border-[#E5E7EB] px-3 py-2 text-sm disabled:opacity-50"
+                  >
+                    {copy.cancelItem}
+                  </button>
+                </div>
               </div>
             )}
 
@@ -637,14 +772,14 @@ const VoiceShoppingAssistant = ({
       <button
         type="button"
         onClick={() => setIsOpen((open) => !open)}
-        className="fixed bottom-24 right-4 z-40 flex items-center gap-2 rounded-full bg-green-600 px-4 py-3 font-semibold text-white shadow-lg transition hover:bg-green-700 sm:right-6"
+        className="vm-voice-toggle inline-flex items-center gap-2 rounded-full bg-green-600 px-4 py-3 font-semibold text-white shadow-lg transition hover:bg-green-700"
         aria-expanded={isOpen}
         aria-label={isOpen ? "Close Voice Order assistant" : "Open Voice Order assistant"}
       >
         {isOpen ? <X size={20} /> : <ShoppingCart size={20} />}
         <span>{isOpen ? "Close" : "Voice Order"}</span>
       </button>
-    </>
+    </div>
   );
 };
 

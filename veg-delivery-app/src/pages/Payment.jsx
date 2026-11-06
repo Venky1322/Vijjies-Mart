@@ -1,8 +1,10 @@
-import { useContext, useState, useEffect } from "react";
+import { useContext, useState, useEffect, useMemo } from "react";
 import { CartContext } from "../context/CartContext";
 import { useNavigate } from "react-router-dom";
 import { CreditCard, Wallet, Truck, ShieldCheck, MapPin, AlertCircle, ArrowLeft, CheckCircle2 } from "lucide-react";
-import { motion } from "framer-motion";
+import { apiUrl } from "../config/api";
+import { calculateCartPricing } from "../utils/money";
+import LocationPicker from "../components/LocationPicker";
 
 const Payment = () => {
   const navigate = useNavigate();
@@ -11,16 +13,49 @@ const Payment = () => {
 
   const [method, setMethod] = useState("ONLINE");
   const [loading, setLoading] = useState(false);
+  const [selectedLocation, setSelectedLocation] = useState(null);
   const [customerLocation, setCustomerLocation] = useState(null);
   const [errorMessage, setErrorMessage] = useState("");
 
-  const discount = totalPrice >= 300 ? Number((totalPrice * 0.10).toFixed(2)) : 0;
-  const discountedSubtotal = Number((totalPrice - discount).toFixed(2));
-  const gst = Number((discountedSubtotal * 0.05).toFixed(2));
-  const finalTotal = Number((discountedSubtotal + gst).toFixed(2));
+  const pricing = calculateCartPricing(totalPrice);
+  const { discount, gst, total: finalTotal } = pricing;
 
   const user = JSON.parse(localStorage.getItem("user"));
-  const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
+  const checkoutFingerprint = useMemo(
+    () =>
+      JSON.stringify(
+        cart
+          .map((item) => ({
+            productId: String(item.productId ?? item.id),
+            quantity: Number(item.quantity),
+            weight: Number(item.weight),
+          }))
+          .sort((left, right) => left.productId.localeCompare(right.productId))
+      ),
+    [cart]
+  );
+
+  const getCheckoutRequestId = () => {
+    const storageKey = `checkout-request:${checkoutFingerprint}`;
+    let requestId = sessionStorage.getItem(storageKey);
+
+    if (!requestId) {
+      requestId = crypto.randomUUID();
+      sessionStorage.setItem(storageKey, requestId);
+    }
+
+    return requestId;
+  };
+
+  const clearCheckoutRequestId = () => {
+    sessionStorage.removeItem(`checkout-request:${checkoutFingerprint}`);
+  };
+
+  const checkoutHeaders = (requestId) => ({
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
+    "Idempotency-Key": requestId,
+  });
 
   useEffect(() => {
     if (!cart || cart.length === 0) {
@@ -29,52 +64,6 @@ const Payment = () => {
       navigate("/cart");
     }
   }, [cart, totalPrice, navigate]);
-
-  //------------------------------------------
-  // Get Customer Current Location
-  //------------------------------------------
-  const getCustomerLocation = () => {
-    return new Promise((resolve, reject) => {
-      if (!navigator.geolocation) {
-        reject(new Error("Geolocation is not supported by your browser. Please enable location permissions."));
-        return;
-      }
-
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const lat = Number(position.coords.latitude);
-          const lng = Number(position.coords.longitude);
-
-          if (!Number.isFinite(lat) || !Number.isFinite(lng) || (lat === 0 && lng === 0)) {
-            reject(new Error("Invalid coordinates detected. Please ensure GPS is active."));
-            return;
-          }
-
-          const location = { lat, lng };
-          setCustomerLocation(location);
-          resolve(location);
-        },
-        (error) => {
-          console.error("Location error code:", error.code, error.message);
-          let msg = "Location permission is required to deliver your order.";
-          if (error.code === 1) {
-            msg = "Location permission was denied. Please allow location access in your browser to proceed.";
-          } else if (error.code === 2) {
-            msg = "Position unavailable. Please turn on your device GPS.";
-          } else if (error.code === 3) {
-            msg = "Location request timed out. Please try again.";
-          }
-          reject(new Error(msg));
-        },
-        {
-          enableHighAccuracy: true,
-          timeout: 12000,
-          maximumAge: 0,
-        }
-      );
-    });
-  };
-
 
   //------------------------------------------
   // Load Razorpay SDK
@@ -99,48 +88,25 @@ const Payment = () => {
     });
   };
 
-  //------------------------------------------
-  // Save Order After Verification
-  //------------------------------------------
-
-  const saveOrder = async (
-    paymentId,
-    razorpayOrderId,
-    transactionStatus
-  ) => {
+  const closeOnlineCheckout = async (order) => {
     try {
-      await fetch(`${API}/orders`, {
+      const response = await fetch(apiUrl("/payment/payment-failed"), {
         method: "POST",
-
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
         },
-
         body: JSON.stringify({
-          userEmail: user.email,
-
-          items: cart,
-
-          total: finalTotal,
-
-          paymentMethod: method,
-
-          paymentStatus: transactionStatus,
-
-          paymentId,
-
-          razorpayOrderId,
-
-          orderDate: new Date(),
+          dbOrderId: order.dbOrderId,
+          razorpay_order_id: order.orderId,
         }),
       });
 
-      clearCart();
-
-      navigate("/order-success");
-    } catch (err) {
-      console.log(err);
-      alert("Unable to save order.");
+      const result = await response.json();
+      return (response.ok && result.success) || result.refunded === true;
+    } catch (error) {
+      console.error("Unable to close online checkout:", error);
+      return false;
     }
   };
 
@@ -148,7 +114,7 @@ const Payment = () => {
   // Razorpay Payment
   //------------------------------------------
 
-  const payWithRazorpay = async (location) => { 
+  const payWithRazorpay = async (location) => {
     if (!user) {
       navigate("/login");
       return;
@@ -169,23 +135,19 @@ const Payment = () => {
       // Create Razorpay Order
       //---------------------------------------
 
-      const orderRes = await fetch(`${API}/payment/create-order`, {
+      const orderRes = await fetch(apiUrl("/payment/create-order"), {
         method: "POST",
-
-        headers: {
-          "Content-Type": "application/json",
-        },
-
+        headers: checkoutHeaders(getCheckoutRequestId()),
         body: JSON.stringify({
-          amount: finalTotal,
           items: cart,
-          userEmail: user.email,
-          paymentMethod: "ONLINE",
-          customerLocation: location,
+          customerLocation: { lat: location.lat, lng: location.lng },
         }),
       });
 
       const order = await orderRes.json();
+      if (!orderRes.ok || !order.success) {
+        throw new Error(order.message || "Unable to create payment order");
+      }
       console.log("Create Order Response:", order);
 
       //---------------------------------------
@@ -216,7 +178,9 @@ const Payment = () => {
         },
 
         modal: {
-          ondismiss: () => {
+          ondismiss: async () => {
+            const closed = await closeOnlineCheckout(order);
+            if (closed) clearCheckoutRequestId();
             setLoading(false);
           },
         },
@@ -228,12 +192,13 @@ const Payment = () => {
             //----------------------------------
 
             const verifyRes = await fetch(
-              `${API}/payment/verify`,
+              apiUrl("/payment/verify"),
               {
                 method: "POST",
 
                 headers: {
                   "Content-Type": "application/json",
+                  Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
                 },
 
                 body: JSON.stringify({
@@ -255,6 +220,7 @@ const Payment = () => {
               // Payment verified successfully
 
               clearCart();
+              clearCheckoutRequestId();
 
               alert(
                 "Payment Successful\n\nTransaction ID:\n" +
@@ -263,7 +229,8 @@ const Payment = () => {
 
               navigate("/order-success");
             } else {
-              alert("Payment Verification Failed");
+              if (verify.refunded) clearCheckoutRequestId();
+              alert(verify.message || "Payment Verification Failed");
             }
 
             setLoading(false);
@@ -278,6 +245,9 @@ const Payment = () => {
       const razor = new window.Razorpay(options);
 
       razor.on("payment.failed", function (response) {
+        void closeOnlineCheckout(order).then((closed) => {
+          if (closed) clearCheckoutRequestId();
+        });
         alert(
           response.error.description ||
           "Payment Failed"
@@ -309,20 +279,13 @@ const Payment = () => {
     setErrorMessage("");
 
     try {
-      const res = await fetch(`${API}/orders`, {
+      const res = await fetch(apiUrl("/orders"), {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: checkoutHeaders(getCheckoutRequestId()),
         body: JSON.stringify({
-          userEmail: user.email,
           items: cart,
-          total: finalTotal,
           paymentMethod: "COD",
-          paymentStatus: "pending",
-          paymentId: "",
-          razorpayOrderId: "",
-          customerLocation: location,
+          customerLocation: { lat: location.lat, lng: location.lng },
         }),
       });
 
@@ -333,6 +296,7 @@ const Payment = () => {
       }
 
       clearCart();
+      clearCheckoutRequestId();
       navigate("/order-success");
     } catch (err) {
       console.error("COD Order Error:", err);
@@ -353,11 +317,24 @@ const Payment = () => {
     }
 
     setErrorMessage("");
+    if (!customerLocation) {
+      setErrorMessage("Choose and confirm your delivery location before placing the order.");
+      return;
+    }
 
     try {
       setLoading(true);
-      const location = await getCustomerLocation();
-      setCustomerLocation(location);
+      const location = {
+        lat: Number(customerLocation.lat),
+        lng: Number(customerLocation.lng),
+      };
+      if (
+        !Number.isFinite(location.lat) ||
+        !Number.isFinite(location.lng) ||
+        (location.lat === 0 && location.lng === 0)
+      ) {
+        throw new Error("Please choose and confirm a valid delivery location.");
+      }
 
       if (method === "ONLINE") {
         await payWithRazorpay(location);
@@ -367,7 +344,6 @@ const Payment = () => {
     } catch (error) {
       console.error("Payment initiation error:", error);
       setErrorMessage(error.message || "Unable to acquire your delivery location. Please enable location permissions.");
-      alert(error.message || "Unable to get your location. Please allow location access.");
       setLoading(false);
     }
   };
@@ -388,30 +364,60 @@ const Payment = () => {
           <div className="text-center">
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">Secure Checkout</h1>
             <p className="text-emerald-100 text-xs sm:text-sm mt-1">
-              Fresh vegetables delivered directly to your doorstep
+              Review your order total and delivery destination before payment.
             </p>
           </div>
         </div>
 
         <div className="p-6">
 
-          {/* Delivery GPS Location Status */}
-          <div className="mb-5">
+          {/* Delivery location selection and explicit confirmation */}
+          <div className="mb-5 space-y-3">
             <h2 className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">
               Delivery Destination
             </h2>
             {customerLocation ? (
               <div className="flex items-center gap-2.5 p-3.5 bg-emerald-50 border border-emerald-300 rounded-xl text-emerald-900 text-xs font-semibold">
                 <CheckCircle2 size={18} className="text-emerald-600 shrink-0" />
+                <span className="min-w-0">
+                  <span className="block">Delivery location confirmed</span>
+                  <span className="mt-1 block break-words font-normal">
+                    {customerLocation.address || "Selected map location"} ·{" "}
+                    {customerLocation.lat.toFixed(4)}, {customerLocation.lng.toFixed(4)}
+                  </span>
+                </span>
+              </div>
+            ) : selectedLocation ? (
+              <div className="flex items-center gap-2.5 p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 text-xs font-medium">
+                <MapPin size={18} className="shrink-0 text-amber-700" />
                 <span>
-                  GPS Confirmed: {customerLocation.lat.toFixed(4)}, {customerLocation.lng.toFixed(4)}
+                  Location selected. Confirm it before placing your order.
                 </span>
               </div>
             ) : (
               <div className="flex items-center gap-2.5 p-3.5 bg-gray-100 border border-gray-200 rounded-xl text-gray-600 text-xs font-medium">
-                <MapPin size={18} className="text-emerald-600 shrink-0 animate-bounce" />
-                <span>Device GPS will pinpoint your delivery address on click</span>
+                <MapPin size={18} className="text-emerald-600 shrink-0" />
+                <span>Search for your address or use GPS, then confirm the selected location.</span>
               </div>
+            )}
+            <LocationPicker
+              onLocationSelect={(location) => {
+                setSelectedLocation(location);
+                setCustomerLocation(null);
+                setErrorMessage("");
+              }}
+            />
+            {selectedLocation && !customerLocation && (
+              <button
+                type="button"
+                onClick={() => {
+                  setCustomerLocation(selectedLocation);
+                  setErrorMessage("");
+                }}
+                className="w-full rounded-xl bg-emerald-700 px-4 py-3 text-sm font-semibold text-white hover:bg-emerald-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700"
+              >
+                Confirm this delivery location
+              </button>
             )}
           </div>
 
@@ -495,12 +501,12 @@ const Payment = () => {
             <div className="space-y-2 text-xs sm:text-sm text-gray-600">
               <div className="flex justify-between">
                 <span>Items Total</span>
-                <span className="font-semibold text-gray-900">₹{totalPrice.toFixed(2)}</span>
+                <span className="font-semibold text-gray-900">₹{pricing.subtotal.toFixed(2)}</span>
               </div>
 
               {discount > 0 && (
                 <div className="flex justify-between text-emerald-700 font-semibold">
-                  <span>10% Discount (&gt;₹300)</span>
+                  <span>10% Discount (₹300+)</span>
                   <span>-₹{discount.toFixed(2)}</span>
                 </div>
               )}
@@ -527,13 +533,13 @@ const Payment = () => {
           {/* Trust Badge */}
           <div className="flex items-center justify-center gap-2 mt-4 text-xs font-semibold text-emerald-700">
             <ShieldCheck size={16} />
-            <span>256-Bit SSL Encrypted & 100% Safe Payments</span>
+            <span>Online payment is processed through Razorpay.</span>
           </div>
 
           {/* Main Action Button */}
           <button
             onClick={handlePayment}
-            disabled={loading}
+            disabled={loading || !customerLocation}
             className="w-full mt-5 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white font-extrabold py-4 rounded-2xl transition-all shadow-lg shadow-emerald-600/30 disabled:opacity-50 cursor-pointer text-sm sm:text-base flex items-center justify-center gap-2"
           >
             {loading ? (

@@ -1,4 +1,5 @@
 import {
+  useRef,
   useState,
 } from "react";
 
@@ -14,18 +15,20 @@ import {
   MapPin,
   UserPlus,
 } from "lucide-react";
-import LocationPicker from "../components/LocationPicker";
+import { apiUrl } from "../config/api";
 import {
-  GoogleMap,
-  Marker,
   Autocomplete,
   LoadScript,
 } from "@react-google-maps/api";
+
+const libraries = ["places"];
 
 const Register = () => {
 
   const navigate =
     useNavigate();
+  const autocompleteRef = useRef(null);
+  const [locationError, setLocationError] = useState("");
 
   const [form, setForm] =
     useState({
@@ -51,7 +54,7 @@ const Register = () => {
 
         const res =
           await fetch(
-            "http://localhost:5000/auth/register",
+            apiUrl("/auth/register"),
             {
               method: "POST",
 
@@ -99,8 +102,14 @@ const Register = () => {
 
 
   return (
-
-    <div className="
+    <LoadScript
+      googleMapsApiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY}
+      libraries={libraries}
+      onError={() =>
+        setLocationError("Address search couldn't be loaded. You can enter an address manually.")
+      }
+    >
+      <div className="
       min-h-screen
       flex
       justify-center
@@ -188,7 +197,13 @@ const Register = () => {
         {/* FORM */}
         {/* ===================================== */}
 
-        <div className="p-8 space-y-5">
+        <form
+          className="p-8 space-y-5"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void handleRegister();
+          }}
+        >
 
 
           {/* EMAIL */}
@@ -206,9 +221,13 @@ const Register = () => {
               size={20}
             />
 
+            <label htmlFor="register-email" className="sr-only">Email address</label>
             <input
+              id="register-email"
               placeholder="Email Address"
               type="email"
+              autoComplete="email"
+              required
               className="
                 w-full
                 bg-white
@@ -220,8 +239,8 @@ const Register = () => {
                 py-4
                 rounded-2xl
                 outline-none
-                focus:border-red-500
-                focus:shadow-[0_0_20px_rgba(255,0,0,0.35)]
+                focus:border-emerald-600
+                focus:shadow-[0_0_0_3px_rgba(34,136,56,0.14)]
                 transition-all
               "
               onChange={(e) =>
@@ -251,9 +270,13 @@ const Register = () => {
               size={20}
             />
 
+            <label htmlFor="register-password" className="sr-only">Password</label>
             <input
+              id="register-password"
               placeholder="Password"
               type="password"
+              autoComplete="new-password"
+              required
               className="
                 w-full
                 bg-white
@@ -265,8 +288,8 @@ const Register = () => {
                 py-4
                 rounded-2xl
                 outline-none
-                focus:border-red-500
-                focus:shadow-[0_0_20px_rgba(255,0,0,0.35)]
+                focus:border-emerald-600
+                focus:shadow-[0_0_0_3px_rgba(34,136,56,0.14)]
                 transition-all
               "
               onChange={(e) =>
@@ -296,9 +319,13 @@ const Register = () => {
               size={20}
             />
 
+            <label htmlFor="register-mobile" className="sr-only">Mobile number</label>
             <input
+              id="register-mobile"
               placeholder="Mobile Number"
               type="tel"
+              autoComplete="tel"
+              required
               className="
                 w-full
                 bg-white
@@ -310,8 +337,8 @@ const Register = () => {
                 py-4
                 rounded-2xl
                 outline-none
-                focus:border-red-500
-                focus:shadow-[0_0_20px_rgba(255,0,0,0.35)]
+                focus:border-emerald-600
+                focus:shadow-[0_0_0_3px_rgba(34,136,56,0.14)]
                 transition-all
               "
               onChange={(e) =>
@@ -342,29 +369,33 @@ const Register = () => {
             />
 
             <Autocomplete
-              onLoad={(autocomplete) =>
-                (autocompleteRef.current = autocomplete)
-              }
+              onLoad={(autocomplete) => {
+                autocompleteRef.current = autocomplete;
+              }}
               onPlaceChanged={() => {
-                const place =
-                  autocompleteRef.current.getPlace();
-
-                if (!place.geometry) return;
+                const place = autocompleteRef.current?.getPlace();
+                const location = place?.geometry?.location;
+                if (!location) {
+                  setLocationError("Choose a suggested address with a map location.");
+                  return;
+                }
 
                 setForm({
                   ...form,
-                  address: place.formatted_address,
-                  latitude:
-                    place.geometry.location.lat(),
-                  longitude:
-                    place.geometry.location.lng(),
+                  address: place.formatted_address || place.name || "",
+                  latitude: location.lat(),
+                  longitude: location.lng(),
                 });
+                setLocationError("");
               }}
             >
+              <label htmlFor="register-address" className="sr-only">Delivery address</label>
               <input
+                id="register-address"
                 type="text"
                 placeholder="Search your Address"
                 value={form.address}
+                autoComplete="street-address"
                 className="
         w-full
         bg-white
@@ -376,14 +407,16 @@ const Register = () => {
         py-4
         rounded-2xl
         outline-none
-        focus:border-red-500
-        focus:shadow-[0_0_20px_rgba(255,0,0,0.35)]
+        focus:border-emerald-600
+        focus:shadow-[0_0_0_3px_rgba(34,136,56,0.14)]
         transition-all
       "
                 onChange={(e) =>
                   setForm({
                     ...form,
                     address: e.target.value,
+                    latitude: undefined,
+                    longitude: undefined,
                   })
                 }
               />
@@ -392,14 +425,22 @@ const Register = () => {
             <button
               type="button"
               onClick={() => {
+                if (!navigator.geolocation) {
+                  setLocationError("Location is unavailable in this browser. You can enter an address manually.");
+                  return;
+                }
                 navigator.geolocation.getCurrentPosition(
-                  async (position) => {
+                  (position) => {
                     const lat =
                       position.coords.latitude;
 
                     const lng =
                       position.coords.longitude;
 
+                    if (!window.google?.maps?.Geocoder) {
+                      setLocationError("Address lookup is unavailable. You can enter an address manually.");
+                      return;
+                    }
                     const geocoder =
                       new window.google.maps.Geocoder();
 
@@ -422,10 +463,21 @@ const Register = () => {
                             latitude: lat,
                             longitude: lng,
                           });
+                          setLocationError("");
+                        } else {
+                          setLocationError("We couldn't find an address for your location. Please enter it manually.");
                         }
                       }
                     );
-                  }
+                  },
+                  (error) => {
+                    setLocationError(
+                      error.code === 1
+                        ? "Location permission was denied. You can enter an address manually."
+                        : "Your location could not be determined. You can enter an address manually."
+                    );
+                  },
+                  { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
                 );
               }}
               className="
@@ -442,30 +494,32 @@ const Register = () => {
             >
               📍 Use Current Location
             </button>
+            {locationError && (
+              <p role="alert" className="mt-2 text-sm text-red-700">
+                {locationError}
+              </p>
+            )}
 
           </div>
 
           {/* REGISTER BUTTON */}
 
           <button
-            onClick={
-              handleRegister
-            }
+            type="submit"
             className="
               w-full
               bg-gradient-to-r
-              from-red-600
-              via-red-700
-              to-red-800
-              hover:from-red-500
-              hover:to-red-700
+              from-emerald-600
+              to-green-700
+              hover:from-emerald-700
+              hover:to-green-800
               text-white
               py-4
               rounded-2xl
               font-black
               text-lg
-              shadow-[0_0_25px_rgba(255,0,0,0.35)]
-              hover:shadow-[0_0_40px_rgba(255,0,0,0.6)]
+              shadow-[0_0_25px_rgba(34,120,67,0.2)]
+              hover:shadow-[0_0_40px_rgba(34,120,67,0.3)]
               transition-all
               duration-300
               hover:scale-[1.02]
@@ -490,8 +544,8 @@ const Register = () => {
             <Link
               to="/login"
               className="
-                text-red-400
-                hover:text-red-300
+                text-green-700
+                hover:text-green-800
                 font-bold
                 transition-all
               "
@@ -503,11 +557,12 @@ const Register = () => {
 
           </p>
 
-        </div>
+        </form>
 
       </div>
 
-    </div>
+      </div>
+    </LoadScript>
   );
 };
 

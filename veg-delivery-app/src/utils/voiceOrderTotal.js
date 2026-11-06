@@ -1,3 +1,5 @@
+import { priceForWeight, toPaise, fromPaise } from "./money";
+
 export const MINIMUM_ORDER_VALUE = 100;
 
 export const calculateProspectiveCartTotal = (cart, voiceItems) => {
@@ -22,7 +24,7 @@ export const calculateProspectiveCartTotal = (cart, voiceItems) => {
     const voiceCartItem = {
       id: product._id,
       productId: product._id,
-      price: pricePerKg * totalWeight,
+      price: priceForWeight(pricePerKg, totalWeight),
       quantity: 1,
     };
 
@@ -36,8 +38,10 @@ export const calculateProspectiveCartTotal = (cart, voiceItems) => {
     );
   }
 
-  return prospectiveCart.reduce(
-    (total, item) => total + item.price * item.quantity,
-    0
+  return fromPaise(
+    prospectiveCart.reduce(
+      (total, item) => total + toPaise(item.price) * Number(item.quantity || 1),
+      0
+    )
   );
 };

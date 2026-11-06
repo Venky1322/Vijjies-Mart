@@ -2,8 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { motion } from "framer-motion";
 import jsPDF from "jspdf";
 import { useNavigate } from "react-router-dom";
-
-const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
+import { apiUrl } from "../config/api";
 
 const parseVoiceProducts = (text) => {
   if (typeof text !== "string" || !text.trim()) {
@@ -120,43 +119,62 @@ const AdminDashboard = () => {
   // ✅ FETCH ORDERS (last 30 minutes)
   const fetchOrders = async () => {
     try {
-      const res = await fetch(`${API}/orders`);
-      const data = await res.json();
-      setOrders(filterRecentOrders(data.orders || []));
+      const res = await fetch(apiUrl("/orders"), {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
+        },
+      });
+
+      if (!res.ok) {
+        throw new Error(`Orders request failed with status ${res.status}`);
+      }
+
+      const data = await res.json().catch(() => ({}));
+      setOrders(filterRecentOrders(Array.isArray(data.orders) ? data.orders : []));
     } catch (err) {
       console.error("Fetch orders error:", err);
+      setOrders([]);
     }
   };
 
   // ✅ FETCH PRODUCTS
   const fetchProducts = async () => {
+    try {
+      const res = await fetch(apiUrl("/products"));
 
-    const res =
-      await fetch(`${API}/products`);
+      if (!res.ok) {
+        throw new Error(`Products request failed with status ${res.status}`);
+      }
 
-    const data = await res.json();
-
-    setProducts(data.products || []);
+      const data = await res.json().catch(() => ({}));
+      setProducts(Array.isArray(data.products) ? data.products : []);
+    } catch (err) {
+      console.error("Fetch products error:", err);
+      setProducts([]);
+    }
   };
 
   // ✅ FETCH PARTNERS
   const fetchPartners = async () => {
+    try {
+      const token = localStorage.getItem("token");
 
-    const token =
-      localStorage.getItem("token");
-
-    const res = await fetch(
-      `${API}/auth/delivery-partners`,
-      {
+      const res = await fetch(apiUrl("/auth/delivery-partners"), {
         headers: {
           Authorization: `Bearer ${token}`,
         },
+      });
+
+      if (!res.ok) {
+        throw new Error(`Delivery partners request failed with status ${res.status}`);
       }
-    );
 
-    const data = await res.json();
-
-    setPartners(data.partners || []);
+      const data = await res.json().catch(() => ({}));
+      setPartners(Array.isArray(data.partners) ? data.partners : []);
+    } catch (err) {
+      console.error("Fetch partners error:", err);
+      setPartners([]);
+    }
   };
   // 📍 OPEN CUSTOMER LOCATION IN GOOGLE MAPS
   const openCustomerLocation = (location) => {
@@ -197,7 +215,11 @@ const AdminDashboard = () => {
   const handleRefresh = async () => {
     try {
       isManualRefresh.current = true;
-      const res = await fetch(`${API}/orders`);
+      const res = await fetch(apiUrl("/orders"), {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
+        },
+      });
       const data = await res.json();
       setOrders(filterRecentOrders(data.orders || []));
       setTimeout(() => { isManualRefresh.current = false; }, 2000);
@@ -246,7 +268,7 @@ const AdminDashboard = () => {
       selectedFile
     );
 
-    await fetch(`${API}/products`, {
+    await fetch(apiUrl("/products"), {
 
       method: "POST",
 
@@ -260,7 +282,7 @@ const AdminDashboard = () => {
   const deleteProduct = async (id) => {
 
     await fetch(
-      `${API}/products/${id}`,
+      apiUrl(`/products/${id}`),
       {
         method: "DELETE",
       }
@@ -299,7 +321,7 @@ const AdminDashboard = () => {
     }
 
     await fetch(
-      `${API}/products/${id}`,
+      apiUrl(`/products/${id}`),
       {
 
         method: "PUT",
@@ -334,7 +356,7 @@ const AdminDashboard = () => {
       );
 
     await fetch(
-      `${API}/orders/${orderId}/assign`,
+      apiUrl(`/orders/${orderId}/assign`),
       {
 
         method: "PUT",
@@ -342,6 +364,7 @@ const AdminDashboard = () => {
         headers: {
           "Content-Type":
             "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
         },
 
         body: JSON.stringify({
@@ -771,7 +794,14 @@ const AdminDashboard = () => {
     };
 
     recognition.onresult = (event) => {
-      const transcript = event.results[0][0].transcript;
+      const result = event?.results?.[0]?.[0];
+      const transcript = result?.transcript?.trim();
+
+      if (!transcript) {
+        setChangeMessage("Voice input was not captured. Please try again.");
+        return;
+      }
+
       setVoiceText(transcript);
       setParsedProducts([]);
       setHasParsedVoice(false);
@@ -785,14 +815,24 @@ const AdminDashboard = () => {
       setIsListening(false);
     };
 
-    recognition.onerror = () => {
+    recognition.onerror = (event) => {
       setIsListening(false);
+      setChangeMessage(
+        event?.error === "no-speech"
+          ? "No speech was detected. Please try again."
+          : "Speech recognition failed. Please try again."
+      );
     };
 
     recognition.start();
   };
 
   const handleParseVoice = () => {
+    if (!voiceText.trim()) {
+      setChangeMessage("Please record or type a voice note before parsing it.");
+      return;
+    }
+
     setParsedProducts(parseVoiceProducts(voiceText));
     setHasParsedVoice(true);
     setVoiceComparison([]);
@@ -888,7 +928,7 @@ const AdminDashboard = () => {
               throw new Error("The existing product could not be identified.");
             }
 
-            response = await fetch(`${API}/products/${existingProduct._id}`, {
+            response = await fetch(apiUrl(`/products/${existingProduct._id}`), {
               method: "PUT",
               headers: {
                 "Content-Type": "application/json",
@@ -909,7 +949,7 @@ const AdminDashboard = () => {
               voiceProductImages[product.name.trim().toLowerCase()]
             );
 
-            response = await fetch(`${API}/products`, {
+            response = await fetch(apiUrl("/products"), {
               method: "POST",
               body: formData,
             });

@@ -12,7 +12,8 @@ export const VOICE_LANGUAGES = [
 const TELUGU_PRODUCT_ALIASES = [
   {
     catalogNames: ["tomato", "tomatoes"],
-    aliases: ["టమాటా", "టమోటా", "టొమాటో", "టమాట", "tomato"],
+    aliases: ["టమాటా", "టమాటో", "టమోటా", "టమోటో", "టొమాటో", "టమాట", "tomato"],
+    displayName: "టమాటాలు",
     speechVariants: [],
   },
   {
@@ -26,6 +27,7 @@ const TELUGU_PRODUCT_ALIASES = [
       "green chilli",
       "mirchi",
     ],
+    displayName: "పచ్చిమిర్చి",
     speechVariants: [],
   },
   {
@@ -38,6 +40,7 @@ const TELUGU_PRODUCT_ALIASES = [
       "onion",
       "onions",
     ],
+    displayName: "ఉల్లిపాయలు",
     speechVariants: [
       { phrase: "ఆన యన", alias: "ఆనియన్" },
       { phrase: "ఆనియన్", alias: "ఆనియన్" },
@@ -47,11 +50,13 @@ const TELUGU_PRODUCT_ALIASES = [
   {
     catalogNames: ["brinjal", "brinjals", "eggplant", "eggplants"],
     aliases: ["వంకాయ", "వంకాయలు", "brinjal", "eggplant"],
+    displayName: "వంకాయలు",
     speechVariants: [],
   },
   {
     catalogNames: ["potato", "potatoes"],
-    aliases: ["బంగాళాదుంప", "ఆలుగడ్డ", "potato", "potatoes"],
+    aliases: ["బంగాళాదుంప", "బంగాళాదుంపలు", "ఆలుగడ్డ", "ఆలుగడ్డలు", "potato", "potatoes"],
+    displayName: "బంగాళాదుంపలు",
     speechVariants: [],
   },
 ];
@@ -65,6 +70,18 @@ export const getTeluguProductAliases = (catalogProductName) => {
     TELUGU_PRODUCT_ALIASES.find(({ catalogNames }) =>
       catalogNames.some((name) => normalizeAliasName(name) === normalizedName)
     )?.aliases || []
+  );
+};
+
+export const getVoiceProductName = (catalogProductName, languageCode) => {
+  if (languageCode !== "te-IN") {
+    return catalogProductName;
+  }
+  const normalizedName = normalizeAliasName(catalogProductName || "");
+  return (
+    TELUGU_PRODUCT_ALIASES.find(({ catalogNames }) =>
+      catalogNames.some((name) => normalizeAliasName(name) === normalizedName)
+    )?.displayName || catalogProductName
   );
 };
 
@@ -85,13 +102,13 @@ export const normalizeTeluguProductSpacing = (transcript) => {
 const INTENTS = {
   "en-IN": {
     cancel: /\b(cancel|no|don't|do not)\b/i,
-    confirm: /\b(yes|proceed|add to cart|okay|ok|confirm)\b/i,
+    confirm: /\b(yes|yeah|yep|sure|proceed|add(?: it| to cart)?|okay|ok|confirm)\b/i,
     checkout: /\b(check ?out|proceed|pay|yes|continue to checkout)\b/i,
     shopping: /\b(shop|continue shopping|not now|no)\b/i,
   },
   "te-IN": {
-    cancel: /రద్దు|వద్దు|కాదు|వద్దు చేయండి/u,
-    confirm: /అవును|సరే|నిర్ధారించు|జోడించండి/u,
+    cancel: /రద్దు|వద్దు|కాదు|లేదు|చేయొద్దు|జోడించవద్దు|వద్దు చేయండి|\b(?:no|cancel|vaddu|vaddhu|kaadu|ledu)\b/iu,
+    confirm: /అవును|సరే|నిర్ధారించు|జోడించండి|జోడించు|వేయి|అలాగే|\b(?:yes|yeah|yep|sure|okay|ok|avunu|sare|add(?:\s+(?:it|cheyyi|veyi))?|cheyyi|veyi)\b/iu,
     checkout: /చెక్అవుట్|చెల్లించు|కొనసాగించు|అవును/u,
     shopping: /షాపింగ్ కొనసాగించు|ఇప్పుడు వద్దు|లేదు/u,
   },
@@ -141,6 +158,7 @@ const COPY = {
     greeting: (name) => `Hi${name ? ` ${name}` : ""}! What would you like to order?`,
     loadingError: "I couldn't load the product list. Please reconnect or refresh the page.",
     notRecognized: "I couldn't identify a product and quantity. Try “tomato one kg and brinjal half kg”.",
+    specifyWeight: "I can't convert a dozen into kilograms. Please specify the weight in kg.",
     unsupported: "Speech recognition isn't supported by this browser. Please try Chrome or add products manually.",
     micDenied: "Microphone permission was denied. Allow microphone access in your browser and try again.",
     speechFailed: "Speech recognition failed. Please try again or add products manually.",
@@ -149,6 +167,12 @@ const COPY = {
     outOfStock: (names) => `Sorry, ${names} ${names.includes(",") ? "are" : "is"} currently out of stock.`,
     alreadyCart: (names) => `All currently available stock for ${names} is already in your cart, so I can't add more.`,
     stockUnknown: (names) => `I couldn't verify stock or pricing for ${names}. Those items won't be added.`,
+    stockApproval: (items) =>
+      `${items.map(({ productName, requestedQuantity, availableQuantity }) => `You asked for ${requestedQuantity} kg of ${productName}; only ${availableQuantity} kg is currently available.`).join(" ")} Should I add the available quantity${items.length === 1 ? "" : " for these items"}?`,
+    stockConfirmButton: "Confirm available quantity",
+    stockReviewAgain: "Say or enter a different quantity in kg (up to the available amount), confirm to use all available stock, or cancel.",
+    stockQuantityDetails: (requested, available) =>
+      `${requested} kg requested; ${available} kg available.`,
     review: (items, total) => `Your order total is ₹${total}. I found ${items}. Would you like me to add these items to your cart?`,
     minimumOrder: (total, minimum) => `Your current order total is ₹${total}. The minimum order value is ₹${minimum}. Please add another item or increase the quantity.`,
     reviewAgain: "Please confirm the order summary or cancel it before starting another request.",
@@ -182,6 +206,7 @@ const COPY = {
     greeting: (name) => `నమస్కారం${name ? ` ${name}` : ""}! ఏమి ఆర్డర్ చేయాలనుకుంటున్నారు?`,
     loadingError: "ఉత్పత్తుల జాబితాను లోడ్ చేయలేకపోయాను. మళ్లీ కనెక్ట్ చేసి పేజీని రిఫ్రెష్ చేయండి.",
     notRecognized: "ఉత్పత్తి మరియు పరిమాణాన్ని గుర్తించలేకపోయాను. ఉదాహరణకు టమాటా ఒక కిలో అని చెప్పండి.",
+    specifyWeight: "డజను పరిమాణాన్ని కిలోలుగా మార్చలేను. దయచేసి కిలోలలో బరువును చెప్పండి.",
     unsupported: "ఈ బ్రౌజర్‌లో వాయిస్ గుర్తింపు అందుబాటులో లేదు. Chrome ప్రయత్నించండి లేదా ఉత్పత్తులను మాన్యువల్‌గా జోడించండి.",
     micDenied: "మైక్రోఫోన్ అనుమతి నిరాకరించబడింది. బ్రౌజర్‌లో అనుమతించి మళ్లీ ప్రయత్నించండి.",
     speechFailed: "వాయిస్ గుర్తింపు విఫలమైంది. మళ్లీ ప్రయత్నించండి లేదా ఉత్పత్తులను మాన్యువల్‌గా జోడించండి.",
@@ -190,6 +215,12 @@ const COPY = {
     outOfStock: (names) => `${names} ప్రస్తుతం స్టాక్‌లో లేవు.`,
     alreadyCart: (names) => `${names} అందుబాటులో ఉన్న స్టాక్ ఇప్పటికే మీ కార్ట్‌లో ఉంది.`,
     stockUnknown: (names) => `${names} స్టాక్ లేదా ధరను తనిఖీ చేయలేకపోయాను. అవి జోడించబడవు.`,
+    stockApproval: (items) =>
+      `${items.map(({ productName, requestedQuantity, availableQuantity }) => `మీరు ${requestedQuantity} కిలోల ${productName} అడిగారు. ప్రస్తుతం ${availableQuantity} ${availableQuantity === 1 ? "కిలో" : "కిలోలు"} మాత్రమే అందుబాటులో ఉన్నాయి. ${availableQuantity} ${availableQuantity === 1 ? "కిలో" : "కిలోలు"} జోడించనా?`).join(" ")}`,
+    stockConfirmButton: "అందుబాటులో ఉన్న పరిమాణాన్ని జోడించండి",
+    stockReviewAgain: "వేరే పరిమాణాన్ని కిలోల్లో చెప్పండి లేదా నమోదు చేయండి (అందుబాటులో ఉన్న పరిమాణం వరకు), అందుబాటులో ఉన్నది మొత్తం అంగీకరించడానికి అవును అని చెప్పండి, లేదా రద్దు చేయండి.",
+    stockQuantityDetails: (requested, available) =>
+      `${requested} కిలోలు కోరారు; ${available} కిలోలు అందుబాటులో ఉన్నాయి.`,
     review: (items, total) => `మీ ఆర్డర్ మొత్తం ₹${total}. ${items} కనుగొన్నాను. ఈ ఉత్పత్తులను కార్ట్‌లో జోడించాలా?`,
     minimumOrder: (total, minimum) => `మీ ప్రస్తుత ఆర్డర్ మొత్తం ₹${total}. కనీస ఆర్డర్ విలువ ₹${minimum}. దయచేసి మరొక ఉత్పత్తిని జోడించండి లేదా పరిమాణాన్ని పెంచండి.`,
     reviewAgain: "మరొక అభ్యర్థనకు ముందు ఆర్డర్‌ను నిర్ధారించండి లేదా రద్దు చేయండి.",
@@ -467,4 +498,7 @@ const COPY = {
   },
 };
 
-export const getVoiceCopy = (languageCode) => COPY[languageCode] || COPY["en-IN"];
+export const getVoiceCopy = (languageCode) => ({
+  ...COPY["en-IN"],
+  ...(COPY[languageCode] || {}),
+});
