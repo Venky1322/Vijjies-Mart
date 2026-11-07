@@ -1,6 +1,6 @@
 export default function Contact() {
   return (
-    <div className="min-h-screen bg-[#F7F8F5] text-[#1F2937] flex flex-col items-center justify-center px-6">
+    <div className="vm-info-page min-h-screen bg-[#F7F8F5] text-[#1F2937] flex flex-col items-center justify-center px-6">
 
       <h1 className="text-4xl font-bold mb-6">📞 Contact Us</h1>
 

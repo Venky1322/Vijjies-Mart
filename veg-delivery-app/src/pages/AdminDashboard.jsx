@@ -1037,7 +1037,7 @@ const AdminDashboard = () => {
   const hasMissingVoiceImages = missingVoiceImageProducts.length > 0;
 
   return (
-    <div className="min-h-screen p-6 bg-[#F7F8F5] text-[#1F2937]">
+    <div className="vm-ops-page min-h-screen p-6 bg-[#F7F8F5] text-[#1F2937]">
 
       <h1 className="text-3xl text-center font-bold mb-6">
         Admin Dashboard

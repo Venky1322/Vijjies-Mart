@@ -72,7 +72,7 @@ const RecipeDetails = () => {
 
     return (
 
-      <div className="min-h-screen flex justify-center items-center bg-orange-50">
+      <div className="vm-recipe-page min-h-screen flex justify-center items-center bg-orange-50">
 
         <h1 className="text-3xl font-bold text-orange-600">
 
@@ -93,7 +93,7 @@ const RecipeDetails = () => {
 
     return (
 
-      <div className="min-h-screen flex justify-center items-center bg-orange-50">
+      <div className="vm-recipe-page min-h-screen flex justify-center items-center bg-orange-50">
 
         <h1 className="text-3xl font-bold text-red-500">
 
@@ -108,7 +108,7 @@ const RecipeDetails = () => {
 
   return (
 
-    <div className="min-h-screen bg-orange-50 p-6">
+    <div className="vm-recipe-page min-h-screen bg-orange-50 p-6">
 
       <div className="max-w-5xl mx-auto bg-white rounded-3xl shadow-xl overflow-hidden">
 

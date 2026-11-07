@@ -110,6 +110,7 @@ const Register = () => {
       }
     >
       <div className="
+      vm-auth-page
       min-h-screen
       flex
       justify-center

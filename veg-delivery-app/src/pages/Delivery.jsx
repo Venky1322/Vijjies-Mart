@@ -154,7 +154,7 @@ const Delivery = () => {
   }, [mapCenter]);
 
   return (
-    <div className="min-h-screen bg-[#F7F8F5] text-[#1F2937] px-4 py-8 md:px-8">
+    <div className="vm-tracking-page min-h-screen bg-[#F7F8F5] text-[#1F2937] px-4 py-8 md:px-8">
       <div className="mx-auto max-w-6xl">
 
         {/* Top Header */}

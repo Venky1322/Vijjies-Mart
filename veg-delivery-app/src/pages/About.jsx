@@ -1,6 +1,6 @@
 export default function About() {
   return (
-    <div className="min-h-screen bg-[#F7F8F5] text-[#1F2937] px-6 py-12">
+    <div className="vm-info-page min-h-screen bg-[#F7F8F5] text-[#1F2937] px-6 py-12">
 
       {/* 🌿 HERO */}
       <div className="text-center max-w-4xl mx-auto">

@@ -269,7 +269,7 @@ const DeliveryDashboard = () => {
     );
   };
   return (
-    <div className="min-h-screen flex 
+    <div className="vm-ops-page min-h-screen flex
     bg-[#F7F8F5] text-[#1F2937]">
 
       {/* SIDEBAR */}

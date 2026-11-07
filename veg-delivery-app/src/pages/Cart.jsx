@@ -31,7 +31,7 @@ const Cart = () => {
   const amountToDiscount = Math.max(0, 300 - totalPrice);
 
   return (
-    <div className="min-h-screen bg-[#F7F8F5] text-[#1F2937] px-4 py-8 md:px-8">
+    <div className="vm-cart-page min-h-screen bg-[#F7F8F5] text-[#1F2937] px-4 py-8 md:px-8">
       <div className="mx-auto max-w-5xl">
 
         {/* Back and Title Header */}
@@ -127,7 +127,7 @@ const Cart = () => {
                         <img
                           src={item.image || "https://images.unsplash.com/photo-1540420773420-3366772f4999?w=200"}
                           alt={item.name}
-                          className="h-20 w-20 rounded-2xl object-cover border border-[#E5E7EB] shadow-sm"
+                          className="cart-item-image h-20 w-20 rounded-2xl object-cover border border-[#E5E7EB] shadow-sm"
                         />
                         <div>
                           <h3 className="text-lg font-bold text-[#1F2937]">
@@ -243,7 +243,7 @@ const Cart = () => {
               <button
                 onClick={() => navigate("/payment")}
                 disabled={!meetsMinimum}
-                className={`mt-5 flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 font-bold text-sm transition-all shadow-lg ${
+                className={`vm-checkout-button mt-5 flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 font-bold text-sm transition-all shadow-lg ${
                   meetsMinimum
                     ? "bg-gradient-to-r from-emerald-500 to-green-600 text-white hover:scale-[1.02] shadow-emerald-500/30 cursor-pointer"
                     : "bg-gray-200 text-gray-500 cursor-not-allowed shadow-none"

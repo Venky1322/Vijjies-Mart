@@ -94,6 +94,7 @@ const Login = () => {
   return (
     <div
       className="
+      vm-auth-page
       flex
       justify-center
       items-center

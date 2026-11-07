@@ -62,7 +62,7 @@ const AdminLogin = () => {
 
   return (
     <div
-      className="flex justify-center items-center min-h-screen
+      className="vm-auth-page flex justify-center items-center min-h-screen
       bg-[#F7F8F5] text-[#1F2937]"
     >
       <div

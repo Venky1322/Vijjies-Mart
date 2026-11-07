@@ -210,7 +210,7 @@ const RecipeDetails = () => {
 
     return (
 
-      <div className="min-h-screen flex justify-center items-center bg-[#F7F8F5]">
+      <div className="vm-recipe-page min-h-screen flex justify-center items-center bg-[#F7F8F5]">
 
         <h1 className="text-5xl font-black text-gray-600 animate-pulse">
 
@@ -231,7 +231,7 @@ const RecipeDetails = () => {
 
     return (
 
-      <div className="min-h-screen flex justify-center items-center bg-[#F7F8F5]">
+      <div className="vm-recipe-page min-h-screen flex justify-center items-center bg-[#F7F8F5]">
 
         <h1 className="text-5xl font-black text-red-500">
 
@@ -246,7 +246,7 @@ const RecipeDetails = () => {
 
   return (
 
-    <div className="min-h-screen bg-[#F7F8F5] text-[#1F2937] py-10 px-4">
+    <div className="vm-recipe-page min-h-screen bg-[#F7F8F5] text-[#1F2937] py-10 px-4">
 
 
       {/* ===================================== */}

@@ -1,6 +1,6 @@
 import { useEffect, useState, useContext } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { ShoppingCart, Search, X, SlidersHorizontal, ArrowUpDown } from "lucide-react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { ShoppingCart, X, ArrowUpDown } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 
 import VegetableCard from "../components/VegetableCard";
@@ -19,13 +19,16 @@ const images = [
 
 export default function Home() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { totalItems, totalPrice } = useContext(CartContext);
 
   const [vegetables, setVegetables] = useState([]);
   const [loadingVegetables, setLoadingVegetables] = useState(true);
   const [productLoadError, setProductLoadError] = useState(false);
   const [index, setIndex] = useState(0);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(
+    () => searchParams.get("search") || ""
+  );
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [sortBy, setSortBy] = useState("default");
 
@@ -43,6 +46,10 @@ export default function Home() {
 
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    setSearchQuery(searchParams.get("search") || "");
+  }, [searchParams]);
 
   const fetchProducts = async () => {
     try {
@@ -129,13 +136,14 @@ export default function Home() {
   // ====================================
   // Category + Search filter
   // ====================================
-  const categories = ["All", "Leafy", "Root", "Fruiting", "Exotic"];
+  const categories = ["All", "Leafy", "Root", "Fruiting", "Exotic", "Fruits"];
 
   const categoryKeywords = {
     Leafy: ["spinach", "coriander", "mint", "methi", "palak", "pudina", "lettuce"],
     Root: ["carrot", "potato", "onion", "beet", "radish", "turnip", "ginger", "garlic", "chamadumpa"],
     Fruiting: ["tomato", "brinjal", "capsicum", "chilli", "okra", "benda", "donda", "kakarakaya", "goruchikkudu"],
     Exotic: ["mushroom", "broccoli", "zucchini", "asparagus", "avocado"],
+    Fruits: ["apple", "banana", "orange", "mango", "grape", "papaya", "guava", "watermelon", "pineapple", "pomegranate", "lemon", "pear", "kiwi", "strawberry"],
   };
 
   const getCategoryCount = (cat) => {
@@ -166,41 +174,6 @@ export default function Home() {
   return (
     <div className="vm-home min-h-screen bg-[#F7F8F5] text-[#1F2937] pb-20">
 
-      <div className="vm-home-persistent-controls">
-        <VoiceShoppingAssistant
-          products={vegetables}
-          productLoadError={productLoadError}
-          user={customerUser}
-        />
-
-        <div className="vm-shop-banner max-w-6xl mx-auto px-4">
-          <div className="bg-white border border-[#E5E7EB] rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-lg">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-green-500/20 flex items-center justify-center text-2xl">🛒</div>
-              <div>
-                <h3 className="font-bold text-lg">Start Your Fresh Order</h3>
-                <p className="text-sm text-gray-500">Prices shown per kilogram • Minimum order ₹100</p>
-              </div>
-            </div>
-
-            <div className="flex gap-3">
-              <a
-                href="#products-section"
-                className="px-6 py-3 text-sm font-bold rounded-xl bg-gradient-to-r from-green-400 to-emerald-500 hover:scale-105 transition-all shadow-lg shadow-green-500/30"
-              >
-                🥦 Shop Now
-              </a>
-              <a
-                href="#ai-recipe"
-                className="px-6 py-3 text-sm font-bold rounded-xl bg-[#F1F8F3] border border-[#E5E7EB] hover:bg-[#EAF6EC] transition-all"
-              >
-                🍛 Get Recipe
-              </a>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <main className="vm-home-scroll-content">
       {/* ============================================ */}
       {/* 🌿 HERO SECTION */}
@@ -224,22 +197,22 @@ export default function Home() {
         <div className="vm-home-hero-content absolute inset-0 flex flex-col justify-center items-center text-center px-4">
 
           {/* Brand pill */}
-          <div className="mb-4 inline-flex items-center gap-2 bg-white border border-[#E5E7EB] px-5 py-2 rounded-full text-green-700 text-sm font-semibold tracking-wide">
+          <div className="vm-hero-kicker mb-4 inline-flex items-center gap-2 bg-white border border-[#E5E7EB] px-5 py-2 rounded-full text-green-700 text-sm font-semibold tracking-wide">
             <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse inline-block" />
-            🌿 VIJJIESMART — Grocery shopping made simple
+            A better way to shop your daily produce
           </div>
 
           <h1
             className="text-4xl sm:text-5xl md:text-7xl font-extrabold leading-[0.98] tracking-[-0.035em]"
           >
-            <span className="text-[#22C55E]">Fresh Veggies</span><br />
+            <span className="text-[#22C55E]">Good food</span><br />
             <span className="text-[#FACC15]">
-              To Your Doorstep
+              starts fresh.
             </span>
           </h1>
 
           <p className="mt-4 max-w-xl text-sm font-semibold leading-relaxed text-[#FEFCE8] drop-shadow-[0_1px_5px_rgba(0,0,0,0.75)] sm:text-base md:text-xl">
-            Browse vegetables and build your order online.
+            Find the vegetables you love, choose just the right amount, and shop with confidence.
           </p>
 
           {/* Search bar in hero */}
@@ -247,7 +220,7 @@ export default function Home() {
             <div className="relative flex-1">
               <input
                 type="text"
-                placeholder="🔍 Search fresh vegetables..."
+                placeholder="Search fresh vegetables..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full px-5 py-4 pr-10 rounded-2xl bg-white border border-[#E5E7EB] text-[#1F2937] placeholder:text-gray-500 outline-none text-base focus:border-green-500 transition"
@@ -265,13 +238,13 @@ export default function Home() {
               onClick={() => document.getElementById("products-section")?.scrollIntoView({ behavior: "smooth" })}
               className="px-6 py-4 bg-gradient-to-r from-green-400 to-emerald-500 rounded-2xl font-bold hover:scale-105 transition-all duration-200 shadow-lg shadow-green-500/30 text-sm cursor-pointer"
             >
-              Search
+              Browse
             </button>
           </div>
 
           {/* Delivery badges */}
           <div className="mt-5 flex flex-wrap gap-3 justify-center text-sm">
-            {["Shop vegetables for your kitchen", "Free delivery on all orders"].map((badge) => (
+            {["Fresh picks for everyday cooking", "Free delivery"].map((badge) => (
               <span key={badge} className="bg-white border border-[#E5E7EB] px-4 py-1.5 rounded-full text-gray-600">
                 {badge}
               </span>
@@ -281,15 +254,14 @@ export default function Home() {
         </div>
       </div>
 
-
       {/* ============================================ */}
       {/* 🎁 OFFER STRIP */}
       {/* ============================================ */}
       <div className="bg-[#EAF6EC] py-3 px-4">
         <div className="flex flex-wrap justify-center gap-x-10 gap-y-2">
           {[
-            "Free delivery on all orders",
-            "10% discount on orders of ₹300 or more",
+            "Free delivery on your First-order",
+            "Save 10% when your basket reaches ₹300",
           ].map((msg) => (
             <span key={msg} className="text-green-800 font-semibold text-sm">
               {msg}
@@ -298,6 +270,45 @@ export default function Home() {
         </div>
       </div>
 
+      <section id="category-section" className="vm-category-section max-w-7xl mx-auto px-4 pt-12">
+        <div className="vm-section-heading">
+          <div>
+            <p className="vm-eyebrow">FIND YOUR FRESH</p>
+            <h2>Shop by category</h2>
+          </div>
+          <a href="#products-section">Browse all products <span aria-hidden="true">→</span></a>
+        </div>
+        <div className="vm-category-tiles">
+          {categories.filter((category) => category !== "All").map((category) => {
+            const count = getCategoryCount(category);
+            const categoryIcons = {
+              Leafy: "🥬",
+              Root: "🥕",
+              Fruiting: "🍅",
+              Exotic: "🍄",
+              Fruits: "🍎",
+            };
+            return (
+              <button
+                key={category}
+                type="button"
+                className={`vm-category-tile${selectedCategory === category ? " is-active" : ""}`}
+                onClick={() => {
+                  setSelectedCategory(category);
+                  document.getElementById("products-section")?.scrollIntoView({ behavior: "smooth" });
+                }}
+              >
+                <span className="vm-category-emoji" aria-hidden="true">{categoryIcons[category]}</span>
+                <span className="vm-category-tile-copy">
+                  <strong>{category}</strong>
+                  <small>{count} {count === 1 ? "product" : "products"}</small>
+                </span>
+                <span className="vm-category-arrow" aria-hidden="true">↗</span>
+              </button>
+            );
+          })}
+        </div>
+      </section>
 
       {/* ============================================ */}
       {/* 🥕 PRODUCTS SECTION */}
@@ -306,11 +317,12 @@ export default function Home() {
 
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
           <div>
+            <p className="vm-eyebrow">TODAY'S MARKET</p>
             <h2 className="text-3xl font-bold flex items-center gap-2">
-              🛍️ Fresh Vegetables
+              Fresh produce
             </h2>
             <p className="text-gray-500 text-sm mt-1">
-              {vegetables.length} products available · Prices in ₹/kg
+              {vegetables.length} {vegetables.length === 1 ? "product" : "products"} available · Prices in ₹/kg
             </p>
           </div>
 
@@ -370,6 +382,7 @@ export default function Home() {
                   {cat === "Root" && "🥕"}
                   {cat === "Fruiting" && "🍅"}
                   {cat === "Exotic" && "✨"}
+                  {cat === "Fruits" && "🍎"}
                 </span>
                 <span>{cat}</span>
                 <span className={`text-xs px-2 py-0.5 rounded-full ${
@@ -427,7 +440,7 @@ export default function Home() {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 justify-items-center">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
             {sortedVegetables.map((veg) => (
               <VegetableCard key={veg._id} veg={veg} />
             ))}
@@ -436,6 +449,22 @@ export default function Home() {
 
       </div>
 
+      <section className="vm-voice-shopping max-w-7xl mx-auto px-4 py-8">
+        <div>
+          <div className="vm-section-heading">
+            <div>
+              <p className="vm-eyebrow">A HANDS-FREE WAY TO SHOP</p>
+              <h2>Prefer to speak your list?</h2>
+            </div>
+            <p>Tell the shopping assistant what you need.</p>
+          </div>
+          <VoiceShoppingAssistant
+            products={vegetables}
+            productLoadError={productLoadError}
+            user={customerUser}
+          />
+        </div>
+      </section>
 
 
       {/* ============================================ */}
@@ -443,14 +472,14 @@ export default function Home() {
       {/* ============================================ */}
       <div className="max-w-7xl mx-auto px-4 py-10 pb-0">
         <h2 className="text-2xl font-bold text-center mb-8 text-gray-800">
-          Why Choose <span className="text-green-400">VIJJIESMART</span>?
+          Why shop with <span className="text-green-400">VIJJIES-MART</span>?
         </h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
           {[
-            { icon: "🚀", title: "Fast Delivery", desc: "Delivered in under 60 minutes" },
-            { icon: "🌱", title: "Farm Fresh", desc: "Direct from local Vendors" },
-            { icon: "💰", title: "Best Prices", desc: "No hidden charges ever" },
-            { icon: "📍", title: "Live Tracking", desc: "Track your order in real time" },
+            { icon: "🌱", title: "Market produce", desc: "Browse the current product catalogue" },
+            { icon: "💳", title: "Clear checkout", desc: "Review taxes and discounts before payment" },
+            { icon: "📍", title: "Order tracking", desc: "Follow your order status after checkout" },
+            { icon: "🚚", title: "Free delivery", desc: "No delivery charge at checkout" },
           ].map((item) => (
             <div key={item.title} className="bg-white border border-[#E5E7EB] rounded-2xl p-5 text-center hover:border-green-500/30 transition-all">
               <div className="text-3xl mb-2">{item.icon}</div>
@@ -554,76 +583,6 @@ export default function Home() {
       )}
 
 
-      {/* ============================================ */}
-      {/* ⭐ CUSTOMER REVIEWS */}
-      {/* ============================================ */}
-      <div className="max-w-7xl mx-auto px-4 py-12">
-
-        <h2 className="text-2xl font-bold text-center mb-8">
-          💬 What Our Customers Say
-        </h2>
-
-        <div className="grid md:grid-cols-3 gap-5">
-          {[
-            { text: "Super fresh vegetables! Loved it 🥦", name: "Priya K.", rating: 5 },
-            { text: "Amazing quality and super quick delivery 🚀", name: "Rajan M.", rating: 5 },
-            { text: "Best online veggie store in my area ❤️", name: "Sushma T.", rating: 5 },
-          ].map((r, i) => (
-            <div
-              key={i}
-              className="bg-white border border-[#E5E7EB] p-6 rounded-2xl shadow-sm hover:border-green-400/30 transition-all"
-            >
-              <div className="text-yellow-400 text-base mb-3">{"⭐".repeat(r.rating)}</div>
-              <p className="text-gray-700 text-sm leading-relaxed">{r.text}</p>
-              <p className="mt-3 text-xs text-gray-500 font-medium">— {r.name}</p>
-            </div>
-          ))}
-        </div>
-
-      </div>
-
-
-      {/* ============================================ */}
-      {/* 🩺 HEALTH BENEFITS */}
-      {/* ============================================ */}
-      <div className="max-w-7xl mx-auto px-4 pb-16">
-
-        <h2 className="text-2xl font-bold text-center mb-8">
-          🩺 Health Benefits of Vegetables
-        </h2>
-
-        <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
-          {[
-            { veg: "🥕 Carrot", benefit: "Improves eyesight & boosts immunity" },
-            { veg: "🥦 Broccoli", benefit: "Helps prevent cancer & improves digestion" },
-            { veg: "🍅 Tomato", benefit: "Good for heart health & skin glow" },
-            { veg: "🥬 Spinach", benefit: "Rich in iron, helps fight anemia" },
-            { veg: "🧄 Garlic", benefit: "Reduces blood pressure & improves immunity" },
-            { veg: "🧅 Onion", benefit: "Controls blood sugar & boosts heart health" },
-          ].map((item, i) => (
-            <div
-              key={i}
-              className="bg-[#F1F8F3] border border-[#E5E7EB] p-5 rounded-2xl hover:border-green-400/30 hover:scale-[1.02] transition-all"
-            >
-              <h3 className="text-base font-bold">{item.veg}</h3>
-              <p className="mt-1.5 text-gray-300 text-sm">{item.benefit}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* ============================================ */}
-      {/* 🦶 FOOTER */}
-      {/* ============================================ */}
-      <footer className="bg-[#166534] border-t border-green-800 py-8 text-center text-[#DCFCE7] text-sm">
-        <p>🌿 VIJJIESMART — Shop vegetables online</p>
-        <Link
-          to="/contact"
-          className="mt-2 inline-flex min-h-11 items-center rounded-lg px-3 text-white underline underline-offset-4 hover:text-emerald-100"
-        >
-          Contact us
-        </Link>
-      </footer>
       </main>
 
       {/* ============================================ */}

@@ -59,7 +59,7 @@ const DeliveryRegister = () => {
   };
 
   return (
-    <div className="flex justify-center items-center min-h-screen bg-[#F7F8F5]">
+    <div className="vm-auth-page flex justify-center items-center min-h-screen bg-[#F7F8F5]">
       <div className="bg-white border border-[#E5E7EB] p-6 rounded-2xl shadow-lg w-80">
         <h2 className="text-xl font-bold text-center mb-4">
           🚚 Delivery Register

@@ -37,7 +37,7 @@ const OrderSuccess = () => {
   }, []);
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-[#F7F8F5]">
+    <div className="vm-success-page flex flex-col items-center justify-center min-h-screen bg-[#F7F8F5]">
       {showConfetti && (
         <Confetti
           width={windowSize.width}

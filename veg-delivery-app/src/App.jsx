@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import {
   BrowserRouter,
   Routes,
@@ -5,28 +6,29 @@ import {
 } from "react-router-dom";
 
 import Navbar from "./components/Navbar";
+import Footer from "./components/Footer";
 
 // 🌍 Pages
-import Home from "./pages/Home";
-import Cart from "./pages/Cart";
-import Vendor from "./pages/Vendor";
-import Delivery from "./pages/Delivery";
-import Payment from "./pages/Payment";
-import OrderSuccess from "./pages/OrderSuccess";
-import Login from "./pages/Login";
-import Register from "./pages/Register";
-import About from "./pages/About";
-import Gallery from "./pages/Gallery";
-import Contact from "./pages/Contact";
+const Home = lazy(() => import("./pages/Home"));
+const Cart = lazy(() => import("./pages/Cart"));
+const Vendor = lazy(() => import("./pages/Vendor"));
+const Delivery = lazy(() => import("./pages/Delivery"));
+const Payment = lazy(() => import("./pages/Payment"));
+const OrderSuccess = lazy(() => import("./pages/OrderSuccess"));
+const Login = lazy(() => import("./pages/Login"));
+const Register = lazy(() => import("./pages/Register"));
+const About = lazy(() => import("./pages/About"));
+const Gallery = lazy(() => import("./pages/Gallery"));
+const Contact = lazy(() => import("./pages/Contact"));
 
 // ✅ ADDED IMPORT
-import SelectLogin from "./pages/SelectLogin";
-import MyOrders from "./pages/MyOrders";
+const SelectLogin = lazy(() => import("./pages/SelectLogin"));
+const MyOrders = lazy(() => import("./pages/MyOrders"));
 
 // 🚚 DELIVERY
-import DeliveryDashboard from "./delivery/DeliveryDashboard.jsx";
-import DeliveryLogin from "./delivery/DeliveryLogin.jsx";
-import DeliveryRegister from "./delivery/DeliveryRegister.jsx";
+const DeliveryDashboard = lazy(() => import("./delivery/DeliveryDashboard.jsx"));
+const DeliveryLogin = lazy(() => import("./delivery/DeliveryLogin.jsx"));
+const DeliveryRegister = lazy(() => import("./delivery/DeliveryRegister.jsx"));
 
 // 🔐 Protected Routes
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -35,16 +37,16 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import DeliveryRoute from "./components/DeliveryRoute";
 
 // 🧑‍💼 Admin
-import AdminLogin from "./pages/AdminLogin";
-import AdminDashboard from "./pages/AdminDashboard";
+const AdminLogin = lazy(() => import("./pages/AdminLogin"));
+const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
 import AdminRoute from "./components/AdminRoute";
 
 // =====================================
 // 🍛 AI RECIPE PAGES
 // =====================================
 
-import RecipeDetails from "./pages/RecipeDetails.jsx";
-import RecipesPage from "./pages/RecipesPage";
+const RecipeDetails = lazy(() => import("./pages/RecipeDetails.jsx"));
+const RecipesPage = lazy(() => import("./pages/RecipesPage"));
 
 function App() {
   return (
@@ -52,6 +54,13 @@ function App() {
       {/* 🔝 Navbar */}
       <Navbar />
 
+      <Suspense
+        fallback={
+          <div className="vm-route-loading" role="status">
+            Loading your page...
+          </div>
+        }
+      >
       <Routes>
         {/* 🌍 PUBLIC ROUTES */}
         <Route
@@ -216,6 +225,8 @@ function App() {
           element={<Vendor />}
         />
       </Routes>
+      </Suspense>
+      <Footer />
     </BrowserRouter>
   );
 }

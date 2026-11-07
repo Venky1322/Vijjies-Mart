@@ -158,9 +158,9 @@ const Payment = () => {
         key: order.key,
         amount: order.amount,
         currency: order.currency,
-        name: "Venky Startup",
-        description: "Fresh Vegetable Purchase",
-        image: "/logo.png",
+        name: "VIJJIES-MART",
+        description: "Fresh produce order",
+        image: "/favicon.svg",
         order_id: order.orderId,
 
         prefill: {
@@ -174,7 +174,7 @@ const Payment = () => {
         },
 
         theme: {
-          color: "#16a34a",
+          color: "#174833",
         },
 
         modal: {
@@ -349,11 +349,11 @@ const Payment = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#F7F8F5] flex items-center justify-center p-4 sm:p-6 text-[#1F2937]">
+    <div className="vm-checkout-page min-h-screen bg-[#F7F8F5] flex items-center justify-center p-4 sm:p-6 text-[#1F2937]">
       <div className="w-full max-w-lg bg-white text-gray-900 rounded-3xl shadow-lg overflow-hidden border border-[#E5E7EB]">
 
         {/* Header */}
-        <div className="bg-gradient-to-r from-emerald-700 to-green-600 text-white p-6 relative">
+        <div className="vm-checkout-heading bg-gradient-to-r from-emerald-700 to-green-600 text-white p-6 relative">
           <button
             onClick={() => navigate("/cart")}
             className="absolute left-5 top-6 text-white/80 hover:text-white p-1 rounded-lg hover:bg-white/10 transition"
@@ -540,7 +540,7 @@ const Payment = () => {
           <button
             onClick={handlePayment}
             disabled={loading || !customerLocation}
-            className="w-full mt-5 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white font-extrabold py-4 rounded-2xl transition-all shadow-lg shadow-emerald-600/30 disabled:opacity-50 cursor-pointer text-sm sm:text-base flex items-center justify-center gap-2"
+            className="vm-place-order w-full mt-5 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white font-extrabold py-4 rounded-2xl transition-all shadow-lg shadow-emerald-600/30 disabled:opacity-50 cursor-pointer text-sm sm:text-base flex items-center justify-center gap-2"
           >
             {loading ? (
               <span className="flex items-center gap-2">

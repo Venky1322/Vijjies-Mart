@@ -11,7 +11,7 @@ export default function Gallery() {
   ];
 
   return (
-    <div className="min-h-screen px-6 py-10 
+    <div className="vm-gallery-page min-h-screen px-6 py-10
     bg-[#F7F8F5] text-[#1F2937]">
 
       {/* 🖼️ TITLE */}

@@ -5,7 +5,7 @@ const SelectLogin = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen flex justify-center items-center 
+    <div className="vm-auth-page min-h-screen flex justify-center items-center
     bg-[#F7F8F5] text-[#1F2937]">
 
       <motion.div

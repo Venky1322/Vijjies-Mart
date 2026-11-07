@@ -774,10 +774,10 @@ const VoiceShoppingAssistant = ({
         onClick={() => setIsOpen((open) => !open)}
         className="vm-voice-toggle inline-flex items-center gap-2 rounded-full bg-green-600 px-4 py-3 font-semibold text-white shadow-lg transition hover:bg-green-700"
         aria-expanded={isOpen}
-        aria-label={isOpen ? "Close Voice Order assistant" : "Open Voice Order assistant"}
+        aria-label={isOpen ? "Close Voice Order assistant" : "Ask to order"}
       >
         {isOpen ? <X size={20} /> : <ShoppingCart size={20} />}
-        <span>{isOpen ? "Close" : "Voice Order"}</span>
+        <span>{isOpen ? "Close" : "ASK TO ORDER"}</span>
       </button>
     </div>
   );
