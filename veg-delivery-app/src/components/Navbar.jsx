@@ -87,12 +87,41 @@ const Navbar = () => {
 
   const handleSearch = (event) => {
     event.preventDefault();
-    const query = searchQuery.trim();
-    navigate(
-      query
-        ? `/?search=${encodeURIComponent(query)}#products-section`
-        : "/#products-section"
-    );
+
+    const query = searchQuery.trim().replace(/\s+/g, " ");
+    const params = new URLSearchParams();
+    if (query) params.set("search", query);
+
+    // Always route to Home with the exact query. Home reads this URL parameter
+    // and filters the products returned by the backend API.
+    navigate({
+      pathname: "/",
+      search: params.toString() ? `?${params.toString()}` : "",
+      hash: "#products-section",
+    });
+
+    // On an already-mounted Home page, explicitly scroll after navigation.
+    if (location.pathname === "/") {
+      window.requestAnimationFrame(() => {
+        document.getElementById("products-section")?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      });
+    }
+  };
+
+  const handleClearSearch = () => {
+    setSearchQuery("");
+
+    // Clearing the Navbar search while on Home must also clear Home's URL-driven
+    // filter. On other pages, just clear the input without unexpected navigation.
+    if (location.pathname === "/" && new URLSearchParams(location.search).has("search")) {
+      navigate(
+        { pathname: "/", search: "", hash: "#products-section" },
+        { replace: true }
+      );
+    }
   };
 
   const customerName = user?.name || user?.email?.split("@")[0] || "Your account";
@@ -100,6 +129,197 @@ const Navbar = () => {
 
   return (
     <>
+      <style>{`
+        /* Compact, touch-friendly navbar layout on phones */
+        @media (max-width: 640px) {
+          .vm-header-main {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px;
+            padding: 9px 12px;
+          }
+
+          .vm-brand {
+            min-width: 0;
+            gap: 7px;
+          }
+
+          .vm-brand-mark {
+            width: 34px;
+            height: 34px;
+            min-width: 34px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+          }
+
+          .vm-brand-mark svg {
+            width: 18px;
+            height: 18px;
+          }
+
+          .vm-brand-wordmark strong {
+            font-size: 14px;
+            line-height: 1.1;
+          }
+
+          .vm-brand-wordmark small {
+            font-size: 9px;
+            line-height: 1.1;
+          }
+
+          .vm-delivery-note {
+            display: none !important;
+          }
+
+          .vm-header-actions {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 7px;
+          }
+
+          .vm-header-actions .vm-header-link {
+            min-width: 34px;
+            min-height: 34px;
+            padding: 5px;
+            justify-content: center;
+          }
+
+          .vm-header-actions .vm-header-link span,
+          .vm-cart-arrow {
+            display: none !important;
+          }
+
+          .vm-header-actions .vm-header-link svg {
+            width: 18px;
+            height: 18px;
+          }
+
+          .vm-cart-link {
+            min-height: 34px;
+            padding: 5px 8px;
+            gap: 4px;
+            font-size: 12px;
+          }
+
+          .vm-cart-icon svg {
+            width: 19px;
+            height: 19px;
+          }
+
+          .vm-cart-count {
+            min-width: 15px;
+            height: 15px;
+            font-size: 9px;
+            line-height: 15px;
+          }
+
+          .vm-mobile-menu {
+            min-height: 34px;
+            padding: 5px 8px;
+            gap: 4px;
+            font-size: 11px;
+          }
+
+          .vm-search {
+            order: 5;
+            flex: 1 1 100%;
+            width: 100%;
+            min-width: 0;
+            min-height: 40px;
+            gap: 7px;
+            padding: 5px 7px 5px 10px;
+            border-radius: 12px;
+          }
+
+          .vm-search > svg {
+            width: 16px;
+            height: 16px;
+            flex: 0 0 auto;
+          }
+
+          .vm-search input {
+            min-width: 0;
+            width: 100%;
+            font-size: 13px;
+          }
+
+          .vm-search-submit {
+            padding: 7px 10px;
+            min-height: 30px;
+            font-size: 11px;
+            white-space: nowrap;
+          }
+
+          .vm-search-clear {
+            padding: 3px;
+          }
+
+          .vm-category-nav {
+            padding: 6px 12px;
+            gap: 7px;
+          }
+
+          .vm-category-nav a,
+          .vm-mobile-logout {
+            font-size: 12px;
+          }
+
+          .vm-shop-banner {
+            padding: 8px 12px;
+          }
+
+          .vm-order-promo {
+            padding: 10px !important;
+            gap: 8px !important;
+            border-radius: 12px !important;
+          }
+
+          .vm-promo-mark {
+            width: 32px;
+            height: 32px;
+            min-width: 32px;
+          }
+
+          .vm-promo-mark svg {
+            width: 17px;
+            height: 17px;
+          }
+
+          .vm-order-promo h3 {
+            font-size: 12px !important;
+            line-height: 1.25;
+          }
+
+          .vm-order-promo p {
+            font-size: 10px !important;
+            line-height: 1.3;
+          }
+
+          .vm-order-promo .vm-button-primary {
+            padding: 7px 11px !important;
+            font-size: 11px !important;
+            border-radius: 9px !important;
+          }
+        }
+
+        @media (max-width: 380px) {
+          .vm-brand-wordmark small {
+            display: none;
+          }
+
+          .vm-header-main {
+            gap: 6px;
+            padding: 8px 9px;
+          }
+
+          .vm-search-submit {
+            padding: 6px 8px;
+          }
+        }
+      `}</style>
       <header className="vm-header">
         <div className="vm-header-main">
           <Link className="vm-brand" to="/" aria-label="Vijjies-Mart home">
@@ -124,7 +344,9 @@ const Navbar = () => {
             <Search size={19} aria-hidden="true" />
             <input
               id="site-search"
+              name="search"
               type="search"
+              autoComplete="off"
               placeholder="Search vegetables, fruits and more"
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
@@ -134,12 +356,14 @@ const Navbar = () => {
                 type="button"
                 className="vm-search-clear"
                 aria-label="Clear search"
-                onClick={() => setSearchQuery("")}
+                onClick={handleClearSearch}
               >
                 <X size={16} />
               </button>
             )}
-            <button type="submit" className="vm-search-submit">Search</button>
+            <button type="submit" className="vm-search-submit" aria-label="Submit product search">
+              Search
+            </button>
           </form>
 
           <div className="vm-header-actions">
@@ -207,9 +431,6 @@ const Navbar = () => {
           aria-label="Main navigation"
         >
           <Link className="vm-category-home" to="/">Home</Link>
-          <Link to="/#products-section">Shop all</Link>
-          <Link to="/#category-section">Categories</Link>
-          <Link to="/recipes">Recipes</Link>
           <Link to="/about">About us</Link>
           <Link to="/contact">Help & contact</Link>
           {user && !isAdmin && (
@@ -230,20 +451,12 @@ const Navbar = () => {
                 </div>
               </div>
 
-              <div className="flex gap-3">
-                <a
-                  href="#products-section"
-                  className="vm-button-primary px-6 py-3 text-sm font-bold rounded-xl"
-                >
-                  Shop fresh
-                </a>
-                <a
-                  href="#ai-recipe"
-                  className="vm-button-secondary px-6 py-3 text-sm font-bold rounded-xl bg-[#F1F8F3] border border-[#E5E7EB]"
-                >
-                  Find a recipe
-                </a>
-              </div>
+              <a
+                href="#products-section"
+                className="vm-button-primary px-6 py-3 text-sm font-bold rounded-xl"
+              >
+                Shop fresh
+              </a>
             </div>
           </div>
         )}

@@ -10,6 +10,21 @@ import { apiUrl } from "../config/api";
 
 const MotionImage = motion.img;
 
+// Normalize text so search is case-insensitive and ignores extra spaces.
+const normalizeSearchText = (value) =>
+  String(value ?? "").toLocaleLowerCase().trim().replace(/\s+/g, " ");
+
+const getProductSearchText = (product) =>
+  [
+    product?.name,
+    product?.category,
+    product?.description,
+    product?.unit,
+    product?.brand,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
 // 🔥 UPDATED → load from public folder
 const images = [
   "/IMG_20260421_101702[1].jpg",
@@ -19,7 +34,7 @@ const images = [
 
 export default function Home() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { totalItems, totalPrice } = useContext(CartContext);
 
   const [vegetables, setVegetables] = useState([]);
@@ -47,8 +62,28 @@ export default function Home() {
     return () => clearInterval(interval);
   }, []);
 
+  // Keep the Home search field synchronized with searches submitted in the Navbar.
+  // This also runs when Home is opened directly from another route with ?search=...
   useEffect(() => {
-    setSearchQuery(searchParams.get("search") || "");
+    const incomingQuery = searchParams.get("search") || "";
+    setSearchQuery(incomingQuery);
+
+    // A navbar search should search the complete catalog, not remain restricted
+    // by a category the customer selected earlier on the Home page.
+    if (incomingQuery) {
+      setSelectedCategory("All");
+    }
+
+    // React Router may render the Home route after the browser has processed
+    // the URL hash. Scroll after render so the target element is available.
+    if (incomingQuery || window.location.hash === "#products-section") {
+      window.requestAnimationFrame(() => {
+        document.getElementById("products-section")?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      });
+    }
   }, [searchParams]);
 
   const fetchProducts = async () => {
@@ -82,6 +117,42 @@ export default function Home() {
   } catch (error) {
     console.error("Unable to read signed-in customer:", error);
   }
+  const clearSearch = () => {
+    setSearchQuery("");
+
+    if (searchParams.has("search")) {
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.delete("search");
+      setSearchParams(nextParams, { replace: true });
+    }
+  };
+
+  const handleSearchSubmit = (event) => {
+    event?.preventDefault();
+
+    const query = searchQuery.trim().replace(/\s+/g, " ");
+    setSearchQuery(query);
+
+    const nextParams = new URLSearchParams(searchParams);
+    if (query) {
+      nextParams.set("search", query);
+    } else {
+      nextParams.delete("search");
+    }
+
+    // Write the submitted query to the URL. Navbar and Home now share one
+    // search value, and a copied/shared URL keeps the same product results.
+    setSearchParams(nextParams);
+    setSelectedCategory("All");
+
+    window.requestAnimationFrame(() => {
+      document.getElementById("products-section")?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
+  };
+
   // ======================================
   // 🤖 GENERATE AI RECIPE
   // ======================================
@@ -117,10 +188,7 @@ export default function Home() {
 
       const data = await res.json();
 
-      setRecipes([
-        data,
-        ...recipes,
-      ]);
+      setRecipes((currentRecipes) => [data, ...currentRecipes]);
 
     } catch (error) {
 
@@ -148,19 +216,25 @@ export default function Home() {
 
   const getCategoryCount = (cat) => {
     if (cat === "All") return vegetables.length;
+    const keywords = categoryKeywords[cat] || [];
     return vegetables.filter((veg) => {
-      const name = veg.name?.toLowerCase() || "";
-      return (categoryKeywords[cat] || []).some((kw) => name.includes(kw));
+      const searchableText = normalizeSearchText(getProductSearchText(veg));
+      return keywords.some((keyword) => searchableText.includes(keyword));
     }).length;
   };
 
+  const normalizedQuery = normalizeSearchText(searchQuery);
+
   const filteredVegetables = vegetables.filter((veg) => {
-    const name = veg.name?.toLowerCase() || "";
-    const matchesSearch = name.includes(searchQuery.toLowerCase().trim());
+    const searchableText = normalizeSearchText(getProductSearchText(veg));
+    const matchesSearch =
+      !normalizedQuery || searchableText.includes(normalizedQuery);
     const matchesCategory =
       selectedCategory === "All"
         ? true
-        : (categoryKeywords[selectedCategory] || []).some((kw) => name.includes(kw));
+        : (categoryKeywords[selectedCategory] || []).some((keyword) =>
+            searchableText.includes(keyword)
+          );
     return matchesSearch && matchesCategory;
   });
 
@@ -172,7 +246,7 @@ export default function Home() {
   });
 
   return (
-    <div className="vm-home min-h-screen bg-[#F7F8F5] text-[#1F2937] pb-20">
+    <div className="vm-home min-h-screen bg-[#F7F8F5] pb-36 text-[#1F2937] sm:pb-32">
 
       <main className="vm-home-scroll-content">
       {/* ============================================ */}
@@ -216,31 +290,34 @@ export default function Home() {
           </p>
 
           {/* Search bar in hero */}
-          <div className="mt-8 w-full max-w-xl flex gap-2">
+          <form role="search" onSubmit={handleSearchSubmit} className="mt-8 w-full max-w-xl flex gap-2">
             <div className="relative flex-1">
               <input
-                type="text"
+                type="search"
+                aria-label="Search products"
                 placeholder="Search fresh vegetables..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full px-5 py-4 pr-10 rounded-2xl bg-white border border-[#E5E7EB] text-[#1F2937] placeholder:text-gray-500 outline-none text-base focus:border-green-500 transition"
+                onChange={(event) => setSearchQuery(event.target.value)}
+                className="w-full min-w-0 px-5 py-4 pr-11 rounded-2xl bg-white border border-[#E5E7EB] text-[#1F2937] placeholder:text-gray-500 outline-none text-base focus:border-green-500 focus:ring-2 focus:ring-green-500/20 transition"
               />
               {searchQuery && (
                 <button
-                  onClick={() => setSearchQuery("")}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-800"
+                  type="button"
+                  aria-label="Clear search"
+                  onClick={clearSearch}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-900"
                 >
                   <X size={18} />
                 </button>
               )}
             </div>
             <button
-              onClick={() => document.getElementById("products-section")?.scrollIntoView({ behavior: "smooth" })}
-              className="px-6 py-4 bg-gradient-to-r from-green-400 to-emerald-500 rounded-2xl font-bold hover:scale-105 transition-all duration-200 shadow-lg shadow-green-500/30 text-sm cursor-pointer"
+              type="submit"
+              className="shrink-0 px-5 sm:px-6 py-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-2xl font-bold hover:brightness-105 transition-all duration-200 shadow-lg shadow-green-500/30 text-sm cursor-pointer"
             >
-              Browse
+              Search
             </button>
-          </div>
+          </form>
 
           {/* Delivery badges */}
           <div className="mt-5 flex flex-wrap gap-3 justify-center text-sm">
@@ -270,46 +347,6 @@ export default function Home() {
         </div>
       </div>
 
-      <section id="category-section" className="vm-category-section max-w-7xl mx-auto px-4 pt-12">
-        <div className="vm-section-heading">
-          <div>
-            <p className="vm-eyebrow">FIND YOUR FRESH</p>
-            <h2>Shop by category</h2>
-          </div>
-          <a href="#products-section">Browse all products <span aria-hidden="true">→</span></a>
-        </div>
-        <div className="vm-category-tiles">
-          {categories.filter((category) => category !== "All").map((category) => {
-            const count = getCategoryCount(category);
-            const categoryIcons = {
-              Leafy: "🥬",
-              Root: "🥕",
-              Fruiting: "🍅",
-              Exotic: "🍄",
-              Fruits: "🍎",
-            };
-            return (
-              <button
-                key={category}
-                type="button"
-                className={`vm-category-tile${selectedCategory === category ? " is-active" : ""}`}
-                onClick={() => {
-                  setSelectedCategory(category);
-                  document.getElementById("products-section")?.scrollIntoView({ behavior: "smooth" });
-                }}
-              >
-                <span className="vm-category-emoji" aria-hidden="true">{categoryIcons[category]}</span>
-                <span className="vm-category-tile-copy">
-                  <strong>{category}</strong>
-                  <small>{count} {count === 1 ? "product" : "products"}</small>
-                </span>
-                <span className="vm-category-arrow" aria-hidden="true">↗</span>
-              </button>
-            );
-          })}
-        </div>
-      </section>
-
       {/* ============================================ */}
       {/* 🥕 PRODUCTS SECTION */}
       {/* ============================================ */}
@@ -322,29 +359,34 @@ export default function Home() {
               Fresh produce
             </h2>
             <p className="text-gray-500 text-sm mt-1">
-              {vegetables.length} {vegetables.length === 1 ? "product" : "products"} available · Prices in ₹/kg
+              {normalizedQuery
+                ? `${filteredVegetables.length} matching ${filteredVegetables.length === 1 ? "product" : "products"}`
+                : `${vegetables.length} ${vegetables.length === 1 ? "product" : "products"} available`} · Prices in ₹/kg
             </p>
           </div>
 
           {/* Controls: Search + Sort */}
           <div className="flex items-center gap-3 flex-wrap">
-            <div className="relative">
+            <form role="search" onSubmit={handleSearchSubmit} className="relative">
               <input
-                type="text"
-                placeholder="Search..."
+                type="search"
+                aria-label="Filter products"
+                placeholder="Search products..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="px-4 py-2 pr-8 rounded-xl bg-white border border-[#E5E7EB] text-[#1F2937] placeholder:text-gray-500 outline-none text-sm focus:border-green-500 transition w-44 sm:w-52"
+                onChange={(event) => setSearchQuery(event.target.value)}
+                className="px-4 py-2 pr-9 rounded-xl bg-white border border-[#E5E7EB] text-[#1F2937] placeholder:text-gray-500 outline-none text-sm focus:border-green-500 focus:ring-2 focus:ring-green-500/15 transition w-44 sm:w-56"
               />
               {searchQuery && (
                 <button
-                  onClick={() => setSearchQuery("")}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-800"
+                  type="button"
+                  aria-label="Clear search"
+                  onClick={clearSearch}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-900"
                 >
                   <X size={14} />
                 </button>
               )}
-            </div>
+            </form>
 
             <div className="flex items-center gap-1.5 bg-white border border-[#E5E7EB] rounded-xl px-3 py-2 text-sm">
               <ArrowUpDown size={14} className="text-green-400" />
@@ -433,7 +475,7 @@ export default function Home() {
             <h3 className="text-xl font-semibold text-gray-700">No vegetables found</h3>
             <p className="text-gray-500 mt-2 text-sm">Try a different search term or category</p>
             <button
-              onClick={() => { setSearchQuery(""); setSelectedCategory("All"); setSortBy("default"); }}
+              onClick={() => { clearSearch(); setSelectedCategory("All"); setSortBy("default"); }}
               className="mt-4 px-6 py-2.5 rounded-xl bg-green-600 hover:bg-green-700 text-white text-sm font-semibold transition shadow-md"
             >
               Clear Filters
@@ -593,24 +635,25 @@ export default function Home() {
           initial={{ y: 80, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 80, opacity: 0 }}
-          className="vm-home-cart-bar fixed bottom-5 left-1/2 -translate-x-1/2 z-50 w-[92%] max-w-lg bg-emerald-600/95 backdrop-blur-xl text-white p-3.5 rounded-2xl shadow-2xl flex items-center justify-between border border-emerald-400/50"
+          className="vm-home-cart-bar fixed left-1/2 z-[70] flex w-[calc(100%-1.5rem)] max-w-lg -translate-x-1/2 items-center justify-between gap-3 rounded-2xl border border-emerald-200 bg-white p-3.5 text-[#172B20] shadow-[0_12px_40px_rgba(15,23,42,0.28)] sm:w-[92%]"
+          style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 5.75rem)" }}
         >
           <div className="flex items-center gap-3">
-            <div className="bg-white/20 p-2.5 rounded-xl">
-              <ShoppingCart size={22} className="text-white" />
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100">
+              <ShoppingCart size={21} className="text-emerald-800" />
             </div>
             <div>
-              <p className="font-extrabold text-sm leading-tight">
+              <p className="font-extrabold text-sm leading-tight text-[#172B20]">
                 {totalItems} {totalItems === 1 ? "item" : "items"} in cart
               </p>
-              <p className="text-xs text-emerald-100 font-medium">
+              <p className="text-xs font-semibold text-[#475569]">
                 Total: ₹{totalPrice.toFixed(2)}
               </p>
             </div>
           </div>
           <button
             onClick={() => navigate("/cart")}
-            className="bg-white text-emerald-800 font-extrabold px-5 py-2.5 rounded-xl text-sm shadow-md hover:bg-emerald-50 transition cursor-pointer"
+            className="shrink-0 rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-extrabold text-white shadow-md transition hover:bg-emerald-800 cursor-pointer sm:px-5"
           >
             View Cart →
           </button>
